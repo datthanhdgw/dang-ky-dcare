@@ -283,11 +283,13 @@ button.secondary{background:#999}
 
 
 <div class="master disabled" id="masterForm">
-    <div class="field"><label>Ngày</label><input type="date" id="ngay"></div>
-    <div class="field grow"><label>Khách hàng</label><input id="khach_hang"></div>
-    <div class="field"><label>MST</label><input id="mst"></div>
-    <div class="field"><label>Email</label><input id="email"></div>
-    <div class="field grow"><label>Ghi chú</label><input id="ghi_chu"></div>
+    <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
+    <div class="field grow"><label>Khách hàng</label><input id="khach_hang" /></div>
+    <div class="field"><label>Địa chỉ</label><input id="dia_chi" /></div>
+    <div class="field"><label>MST</label><input id="mst" /></div>
+    <br>
+    <div class="field"><label>Email</label><input id="email" /></div>
+    <div class="field grow"><label>Ghi chú</label><input id="ghi_chu" /></div>
 </div>
 
 <div class="detail disabled" id="detailSection">
