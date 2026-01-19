@@ -1,0 +1,47 @@
+/* ===== PSC style ===== */
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+}
+
+#hot {
+  margin-top: 10px;
+}
+
+/* Handsontable */
+.handsontable th {
+  background: #f3f3f3;
+  font-weight: bold;
+  text-align: center;
+}
+
+.handsontable td {
+  vertical-align: middle;
+}
+
+/* Số tiền canh phải */
+.htRight {
+  text-align: right;
+}
+
+/* Tổng cộng */
+#tong_cong {
+  font-size: 16px;
+  font-weight: bold;
+  color: #d9534f;
+}
+
+/* Input PSC */
+input[type="text"],
+input[type="date"] {
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
+/* Nút */
+button {
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}

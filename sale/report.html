@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Báo cáo tồn kho</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script id="sap-ui-bootstrap"
+    src="https://sapui5.hana.ondemand.com/resources/sap-ui-core.js"
+    data-sap-ui-theme="sap_fiori_3"
+    data-sap-ui-libs="sap.m"
+    data-sap-ui-bindingSyntax="complex">
+  </script>
+  <script>
+    sap.ui.getCore().attachInit(function () {
+      if (!localStorage.getItem("auth")) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      var oModel = new sap.ui.model.json.JSONModel({ keyword: "", results: [] });
+      sap.ui.getCore().setModel(oModel);
+
+      function mask(n) {
+        n = parseFloat(n);
+        return isNaN(n) ? "0" : (n > 30 ? "30+" : n.toLocaleString("vi-VN"));
+      }
+
+      function fetchData() {
+        var auth = localStorage.getItem("auth");
+        fetch("stock.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Basic " + auth
+          },
+          body: JSON.stringify({
+            S_BUKRS: ["1000", "1100", "1200"],
+            S_MATNR: [], S_MATKL: [], S_BRAND: [], S_SUBBR: [], S_GROUP: [], S_SUBGR: []
+          })
+        })
+        .then(res => res.json())
+        .then(response => {
+          if (response.CODE === 200 && Array.isArray(response.DATA)) {
+            const keyword = oModel.getProperty("/keyword").toLowerCase();
+            const filtered = response.DATA.map(item => ({
+              ...item,
+              TONG_CONG_STR: mask(item.TONG_CONG),
+              SG_STR: mask(item.SG),
+              HN_STR: mask(item.HN),
+              DN_STR: mask(item.DN)
+            })).filter(item =>
+              item.MAKTX?.toLowerCase().includes(keyword)
+            );
+            oModel.setProperty("/results", filtered);
+          } else {
+            sap.m.MessageBox.error("Không có dữ liệu: " + (response.MSG || "lỗi"));
+          }
+        });
+      }
+
+      const oInput = new sap.m.Input({
+        placeholder: "Tìm tên hàng...",
+        value: "{/keyword}",
+        submit: fetchData
+      });
+
+      new sap.m.App({
+        pages: [
+          new sap.m.Page({
+            title: "Báo cáo tồn kho",
+            showNavButton: false,
+            headerContent: [
+              new sap.m.Button({
+                icon: "sap-icon://log",
+                type: "Transparent",
+                press: function () {
+                  localStorage.removeItem("auth");
+                  window.location.href = "login.html";
+                }
+              })
+            ],
+            content: [
+              oInput,
+              new sap.m.Button({
+                text: "Xem tồn kho",
+                type: "Emphasized",
+                press: fetchData
+              }),
+              new sap.m.List({
+                growing: true,
+                items: {
+                  path: "/results",
+                  template: new sap.m.ObjectListItem({
+                    title: "{MAKTX}",
+                    number: "{TONG_CONG_STR}",
+                    numberUnit: "Tổng",
+                    attributes: [
+                      new sap.m.ObjectAttribute({
+                        text: "{= 'Nhãn: ' + ${ZZBRAND_TXT} + ' | Nhóm: ' + ${ZZGROUP_TXT} + ' Mã: ' + ${MATNR} }"
+						}),
+                      new sap.m.ObjectAttribute({
+                        text: "{= 'HCM: ' + ${SG_STR} + ' | HNI: ' + ${HN_STR} + ' | DNG: ' + ${DN_STR} }"
+                      })						
+                      
+                    ]
+                  })
+                }
+              })
+            ]
+          })
+        ]
+      }).placeAt("content");
+    });
+  </script>
+</head>
+<body class="sapUiBody" id="content"></body>
+</html>

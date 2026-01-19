@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Đăng nhập SAP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script id="sap-ui-bootstrap"
+    src="https://sapui5.hana.ondemand.com/resources/sap-ui-core.js"
+    data-sap-ui-theme="sap_fiori_3"
+    data-sap-ui-libs="sap.m"
+    data-sap-ui-bindingSyntax="complex">
+  </script>
+  <style>
+    .orange-btn .sapMBtnInner {
+      background-color: #ff6600 !important;
+      color: white !important;
+    }
+  </style>
+  <script>
+    sap.ui.getCore().attachInit(function () {
+      var oModel = new sap.ui.model.json.JSONModel({ username: "", password: "" });
+      sap.ui.getCore().setModel(oModel);
+
+      new sap.m.App({
+        pages: [
+          new sap.m.Page({
+            title: "Đăng nhập hệ thống",
+            content: [
+              new sap.m.Input({ placeholder: "Tài khoản", value: "{/username}", width: "90%" }),
+              new sap.m.Input({ placeholder: "Mật khẩu", value: "{/password}", type: "Password", width: "90%" }),
+              new sap.m.Button({
+                text: "Đăng nhập",
+                type: "Emphasized",
+                width: "90%",
+                press: function () {
+                  var data = oModel.getData();
+                  var auth = btoa(data.username + ":" + data.password);
+
+                  fetch("login.php", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": "Basic " + auth
+                    }
+                  })
+                  .then(res => {
+                    if (!res.ok) {
+                      throw new Error("Sai tài khoản hoặc mật khẩu (HTTP " + res.status + ")");
+                    }
+                    return res.json();
+                  })
+                  .then(response => {
+                    if (response.CODE === 200) {
+                      localStorage.setItem("auth", auth);
+                      window.location.href = "report.html";
+                    } else {
+                      throw new Error("Phản hồi không hợp lệ từ hệ thống");
+                    }
+                  })
+                  .catch(err => {
+                    sap.m.MessageBox.error("Đăng nhập thất bại: " + err.message);
+                  });
+                }
+              }).addStyleClass("orange-btn")
+            ]
+          })
+        ]
+      }).placeAt("content");
+    });
+  </script>
+</head>
+<body class="sapUiBody" id="content"></body>
+</html>
