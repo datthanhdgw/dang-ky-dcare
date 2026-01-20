@@ -375,8 +375,8 @@ button.secondary{background:#999}
         <span class="form-group-title">Loại khách hàng</span>
         <div class="kh-type-group">
             <label><input type="radio" name="loai_kh" value="cong-no" checked onchange="changeKHType('cong-no')"> KH công nợ</label>
-            <label><input type="radio" name="loai_kh" value="vanglai-doanh-nghiep" onchange="changeKHType('vanglai-doanh-nghiep')"> KH vãng lai doanh nghiệp</label>
-            <label><input type="radio" name="loai_kh" value="vanglai-ca-nhan" onchange="changeKHType('vanglai-ca-nhan')"> KH vãng lai cá nhân</label>
+            <label><input type="radio" name="loai_kh" value="vanglai-doanh-nghiep" onchange="changeKHType('vanglai-doanh-nghiep')"> KH doanh nghiệp</label>
+            <label><input type="radio" name="loai_kh" value="vanglai-ca-nhan" onchange="changeKHType('vanglai-ca-nhan')"> KH cá nhân</label>
         </div>
     </div>
      <!-- KH công nợ -->
@@ -386,7 +386,7 @@ button.secondary{background:#999}
             <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
             <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang" /></div>
             <div class="field grow"><label>Địa chỉ</label><input id="dia_chi" /></div>
-            <div class="field"><label>MST</label><input id="mst" readonly style="background:#f5f5f5" /></div>
+            <div class="field"><label>Mã số thuế</label><input id="mst" inputmode="numeric" maxlength="15" style="background:#f5f5f5" /></div>
         </div>
         <div class="master-section">
             <div class="field"><label>Email</label><input id="email" /></div>
@@ -401,7 +401,7 @@ button.secondary{background:#999}
             <div class="lookup-wrapper">
                 <div class="field grow">
                     <label>Mã số thuế</label>
-                    <input id="mst2" placeholder="Nhập MST để tìm kiếm" />
+                    <input id="mst2" inputmode="numeric" maxlength="15" placeholder="Nhập MST để tìm kiếm" />
                     <div class="lookup-status" id="lookup-status"></div>
                 </div>
                 <button type="button" class="btn-lookup" id="btn-lookup-tax">🔍 Tra cứu</button>
@@ -423,6 +423,7 @@ button.secondary{background:#999}
             <div class="field"><label>Ngày</label><input type="date" id="ngay3" /></div>
             <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang3" /></div>
             <div class="field grow"><label>Địa chỉ</label><input id="dia_chi3" /></div>
+            <div class="field"><label>Mã số thuế</label><input id="mst" inputmode="numeric" maxlength="15"  style="background:#f5f5f5" /></div>
         </div>
         <div class="master-section">
             <div class="field"><label>Email</label><input id="email3" /></div>
@@ -729,6 +730,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             lookupMST();
         }
+    });
+
+    // Chỉ cho phép nhập số
+    mstInput.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '');
     });
 });
 
