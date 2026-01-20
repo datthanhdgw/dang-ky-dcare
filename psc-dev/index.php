@@ -301,8 +301,8 @@ textarea{min-height:32px}
     background: #ff8a1a;
 }
 
-.detail{background:#fff;margin-top:8px;padding:6px;border-radius:8px}
-#hot{width:100%;min-height:380px}
+.detail{background:#fff;margin-top:8px;padding:6px;border-radius:8px;overflow-x:auto}
+#hot{width:100%;min-height:380px;overflow:hidden}
 
 .footer{
     margin-top:10px;
@@ -503,13 +503,13 @@ const hot=new Handsontable(document.getElementById('hot'),{
     ],
     
 columns: [
-        { type:'text', width:220 },      // Linh kiện
-        { type:'numeric', width:90 },    // Số lượng
+        { type:'text', width:190 },      // Linh kiện
+        { type:'numeric', width:60 },    // Số lượng
         { ...moneyCol, width:130 },      // Đơn giá bán lẻ
         { ...moneyCol, readOnly:true, width:130 }, // Doanh thu
-        { type:'dropdown', source:[0,8,10], width:110 }, // Thuế %
-        { ...moneyCol, readOnly:true, width:130 }, // Thuế GTGT
-        { ...moneyCol, readOnly:true, width:140 }, // Thành tiền
+        { type:'dropdown', source:[0,8,10], width:100 }, // Thuế %
+        { ...moneyCol, readOnly:true, width:110 }, // Thuế GTGT
+        { ...moneyCol, readOnly:true, width:120 }, // Thành tiền
         { ...moneyCol, width:160 },      // Tiền trên Phiếu thu
         { ...moneyCol, readOnly:true, width:120 }, // Chênh lệch
         { type:'text', width:200 }       // Ghi chú
@@ -679,6 +679,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
  
+
+/* ===== LOOKUP MST via VietQR API ===== */
+document.addEventListener('DOMContentLoaded', () => {
+    const mstInput = document.getElementById('mst2');
+    const btnLookup = document.getElementById('btn-lookup-tax');
+    const lookupStatus = document.getElementById('lookup-status');
+
+    async function lookupMST() {
+        const mst = mstInput.value.trim();
+        if (!mst) {
+            lookupStatus.innerText = 'Vui lòng nhập MST';
+            lookupStatus.style.color = '#e74c3c';
+            return;
+        }
+
+        lookupStatus.innerText = 'Đang tra cứu...';
+        lookupStatus.style.color = '#666';
+
+        try {
+            const response = await fetch(`https://api.vietqr.io/v2/business/${encodeURIComponent(mst)}`);
+            const data = await response.json();
+
+            if (data.code === '00' && data.data) {
+                // Điền thông tin vào form
+                document.getElementById('khach_hang2').value = data.data.name || '';
+                document.getElementById('dia_chi2').value = data.data.address || '';
+                lookupStatus.innerText = '✓ Tra cứu thành công';
+                lookupStatus.style.color = '#27ae60';
+            } else {
+                lookupStatus.innerText = 'Không tìm thấy thông tin MST';
+                lookupStatus.style.color = '#e74c3c';
+                document.getElementById('khach_hang2').value = '';
+                document.getElementById('dia_chi2').value = '';
+            }
+        } catch (error) {
+            console.error('Lookup error:', error);
+            lookupStatus.innerText = 'Lỗi kết nối API';
+            lookupStatus.style.color = '#e74c3c';
+        }
+    }
+
+    // Click nút Tra cứu
+    btnLookup.addEventListener('click', lookupMST);
+
+    // Enter trong input MST
+    mstInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            lookupMST();
+        }
+    });
+});
 
 function loadPSC(soPhieu) {
 
