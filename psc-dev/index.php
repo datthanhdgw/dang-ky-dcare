@@ -1,6 +1,3 @@
-
-
-
 <?php
 if (isset($_GET['action']) || $_SERVER['REQUEST_METHOD']==='POST') {
     header('Content-Type: application/json; charset=utf-8');
@@ -74,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = $stmt->fetchColumn();
 
 
-        // Chuẩn hoá ngày giao hàng
+        // Chuẩn hóa ngày giao hàng
         $ngayGoodDelivery = null;
         if (!empty($m['ngay'])) {
             $ngayGoodDelivery = $m['ngay']; // yyyy-mm-dd
@@ -85,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("
                 UPDATE psc_master SET
                     branch_code=?, branch_name=?,
-                    ngay_good_delivery=?, ten_khach_hang=?, mst=?, email_nhan_hd=?, ghi_chu=?,
+                    ngay_good_delivery=?, ten_khach_hang=?, dia_chi=?, mst=?, email_nhan_hd=?, ghi_chu=?,
                     tong_doanh_thu=?, tong_thue=?, tong_thanh_tien=?
                 WHERE id=?
             ")->execute([
@@ -93,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $m['branch_name'],
                 $ngayGoodDelivery,
                 $m['khach_hang'],
+                $m['dia_chi'],
                 $m['mst'],
                 $m['email'],
                 $m['ghi_chu'],
@@ -110,15 +108,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("
                 INSERT INTO psc_master
                 (branch_code, branch_name, so_phieu_psc,
-                 ngay_good_delivery, ten_khach_hang, mst, email_nhan_hd, ghi_chu,
+                 ngay_good_delivery, ten_khach_hang, dia_chi, mst, email_nhan_hd, ghi_chu,
                  tong_doanh_thu, tong_thue, tong_thanh_tien)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
             ")->execute([
                 $m['branch_code'],
                 $m['branch_name'],
                 $m['so_phieu'],
                 $ngayGoodDelivery,
                 $m['khach_hang'],
+                $m['dia_chi'],
                 $m['mst'],
                 $m['email'],
                 $m['ghi_chu'],
@@ -142,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         foreach ($rows as $idx => $r) {
 
-            // ✅ FIX 2: KHÔNG CÓ MÃ HÀNG → BỎ
+            // ✅ FIX 2: KHÔNG CÓ MÃ HÀNG → Bỏ
             if (!isset($r[0]) || trim((string)$r[0]) === '') {
                 continue;
             }
@@ -216,14 +215,91 @@ body{font-family:Segoe UI;background:#f4f6f9;margin:0}
 .psc-bar span{font-weight:600;color:#ff9f43}
 
 .master{
-    background:#fff;margin-top:8px;padding:8px;border-radius:8px;
-    display:flex;gap:10px;align-items:flex-end
+    background:#fff;margin-top:8px;padding:12px;border-radius:8px;
 }
 .master .field{display:flex;flex-direction:column}
 .master .field.grow{flex:1}
 label{font-size:12px;font-weight:600}
 input,textarea{padding:6px;border-radius:5px;border:1px solid #ddd;font-size:13px}
 textarea{min-height:32px}
+
+/* KH Type Selection */
+.kh-type-section {
+    background: #fff3e0;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 2px solid #ff9f43;
+}
+.kh-type-section .form-group-title {
+    font-weight: 700;
+    color: #ff9f43;
+    margin-right: 15px;
+    display: inline-block;
+}
+.kh-type-group {
+    display: inline-flex;
+    gap: 20px;
+}
+.kh-type-group label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.kh-type-group input[type="radio"] {
+    accent-color: #ff9f43;
+}
+
+/* Form sections */
+.form-group-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.master-section {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.master-section.row-divider {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Lookup MST wrapper */
+.lookup-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex: 1;
+}
+.lookup-wrapper .field {
+    flex: 1;
+}
+.lookup-status {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+}
+.btn-lookup {
+    background: #ff9f43;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    height: fit-content;
+}
+.btn-lookup:hover {
+    background: #ff8a1a;
+}
 
 .detail{background:#fff;margin-top:8px;padding:6px;border-radius:8px}
 #hot{width:100%;min-height:380px}
@@ -259,6 +335,18 @@ button.secondary{background:#999}
     background: #ff8a1a;
 }
 
+/* Hide elements based on KH type */
+.group-cong-no,
+.group-vanglai-doanh-nghiep,
+.group-vanglai-ca-nhan {
+    display: none;
+}
+.group-cong-no.active,
+.group-vanglai-doanh-nghiep.active,
+.group-vanglai-ca-nhan.active {
+    display: block;
+}
+
 </style>
 </head>
 
@@ -275,21 +363,72 @@ button.secondary{background:#999}
         🔍 Tìm
     </button>
 
-    <span>CỬA HÀNG</span>
+    <span>CHI NHÁNH</span>
     <select id="branch"></select>
 
     <span id="statusEl">Chưa chọn phiếu</span>
 </div>
 
-
 <div class="master disabled" id="masterForm">
-    <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
-    <div class="field grow"><label>Khách hàng</label><input id="khach_hang" /></div>
-    <div class="field"><label>Địa chỉ</label><input id="dia_chi" /></div>
-    <div class="field"><label>MST</label><input id="mst" /></div>
-    <br>
-    <div class="field"><label>Email</label><input id="email" /></div>
-    <div class="field grow"><label>Ghi chú</label><input id="ghi_chu" /></div>
+    <!-- Loại khách hàng - Section nổi bật trên cùng -->
+    <div class="kh-type-section">
+        <span class="form-group-title">Loại khách hàng</span>
+        <div class="kh-type-group">
+            <label><input type="radio" name="loai_kh" value="cong-no" checked onchange="changeKHType('cong-no')"> KH công nợ</label>
+            <label><input type="radio" name="loai_kh" value="vanglai-doanh-nghiep" onchange="changeKHType('vanglai-doanh-nghiep')"> KH vãng lai doanh nghiệp</label>
+            <label><input type="radio" name="loai_kh" value="vanglai-ca-nhan" onchange="changeKHType('vanglai-ca-nhan')"> KH vãng lai cá nhân</label>
+        </div>
+    </div>
+     <!-- KH công nợ -->
+    <div class="group-cong-no">
+        <div class="form-group-title">Thông tin khách hàng công nợ</div>
+        <div class="master-section row-divider">
+            <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
+            <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang" /></div>
+            <div class="field grow"><label>Địa chỉ</label><input id="dia_chi" /></div>
+            <div class="field"><label>MST</label><input id="mst" readonly style="background:#f5f5f5" /></div>
+        </div>
+        <div class="master-section">
+            <div class="field"><label>Email</label><input id="email" /></div>
+            <div class="field grow"><label>Ghi chú</label><input id="ghi_chu" /></div>
+        </div>
+    </div>
+    <!-- KH vãng lai doanh nghiệp (có API thuế) -->
+    <div class="group-vanglai-doanh-nghiep">
+        <div class="form-group-title">Thông tin khách hàng vãng lai doanh nghiệp</div>
+        <div class="master-section row-divider">
+            <div class="field"><label>Ngày</label><input type="date" id="ngay2" /></div>
+            <div class="lookup-wrapper">
+                <div class="field grow">
+                    <label>Mã số thuế</label>
+                    <input id="mst2" placeholder="Nhập MST để tìm kiếm" />
+                    <div class="lookup-status" id="lookup-status"></div>
+                </div>
+                <button type="button" class="btn-lookup" id="btn-lookup-tax">🔍 Tra cứu</button>
+            </div>
+        </div>
+        <div class="master-section row-divider">
+            <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang2" readonly style="background:#f5f5f5" /></div>
+            <div class="field grow"><label>Địa chỉ</label><input id="dia_chi2" readonly style="background:#f5f5f5" /></div>
+        </div>
+        <div class="master-section">
+            <div class="field"><label>Email</label><input id="email2" /></div>
+            <div class="field grow"><label>Ghi chú</label><input id="ghi_chu2" /></div>
+        </div>
+    </div>
+    <!-- KH vãng lai cá nhân (không MST) -->
+    <div class="group-vanglai-ca-nhan">
+        <div class="form-group-title">Thông tin khách hàng vãng lai cá nhân</div>
+        <div class="master-section row-divider">
+            <div class="field"><label>Ngày</label><input type="date" id="ngay3" /></div>
+            <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang3" /></div>
+            <div class="field grow"><label>Địa chỉ</label><input id="dia_chi3" /></div>
+        </div>
+        <div class="master-section">
+            <div class="field"><label>Email</label><input id="email3" /></div>
+            <div class="field grow"><label>Ghi chú</label><input id="ghi_chu3" /></div>
+        </div>
+    </div>
 </div>
 
 <div class="detail disabled" id="detailSection">
@@ -304,6 +443,24 @@ button.secondary{background:#999}
 </div>
 
 <script>
+/* ===== CHANGE KH TYPE ===== */
+function changeKHType(type) {
+    // Remove active class from all groups
+    document.querySelectorAll('.group-cong-no, .group-vanglai-doanh-nghiep, .group-vanglai-ca-nhan')
+        .forEach(el => el.classList.remove('active'));
+    
+    // Add active class to selected group
+    const targetGroup = document.querySelector('.group-' + type);
+    if (targetGroup) {
+        targetGroup.classList.add('active');
+    }
+}
+
+// Initialize: show default KH type on page load
+document.addEventListener('DOMContentLoaded', () => {
+    changeKHType('cong-no'); // Default is KH công nợ
+});
+
 /* ===== BRANCH ===== */
 const BRANCHES={
   "CN1_HCM":"B2X_QUAN 7_HO CHI MINH",
@@ -348,17 +505,13 @@ const hot=new Handsontable(document.getElementById('hot'),{
 columns: [
         { type:'text', width:220 },      // Linh kiện
         { type:'numeric', width:90 },    // Số lượng
-    
         { ...moneyCol, width:130 },      // Đơn giá bán lẻ
         { ...moneyCol, readOnly:true, width:130 }, // Doanh thu
-    
         { type:'dropdown', source:[0,8,10], width:110 }, // Thuế %
-    
         { ...moneyCol, readOnly:true, width:130 }, // Thuế GTGT
         { ...moneyCol, readOnly:true, width:140 }, // Thành tiền
         { ...moneyCol, width:160 },      // Tiền trên Phiếu thu
         { ...moneyCol, readOnly:true, width:120 }, // Chênh lệch
-    
         { type:'text', width:200 }       // Ghi chú
     ],
 
@@ -486,6 +639,7 @@ function saveData(){
                 branch_name:BRANCHES[branchSelect.value],
                 ngay:ngay.value,
                 khach_hang:khach_hang.value,
+                dia_chi:dia_chi.value,
                 mst:mst.value,
                 email:email.value,
                 ghi_chu:ghi_chu.value,
@@ -550,6 +704,7 @@ function loadPSC(soPhieu) {
 
             ngay.value = res.master.ngay_good_delivery;
             khach_hang.value = res.master.ten_khach_hang;
+            dia_chi.value = res.master.dia_chi;
             mst.value = res.master.mst;
             email.value = res.master.email_nhan_hd;
             ghi_chu.value = res.master.ghi_chu;
