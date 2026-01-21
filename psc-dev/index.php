@@ -284,7 +284,10 @@ textarea{min-height:32px}
 .lookup-status {
     font-size: 11px;
     color: #666;
-    margin-top: 2px;
+    position: absolute;
+    bottom: -16px;
+    left: 0;
+    white-space: nowrap;
 }
 .btn-lookup {
     background: #ff9f43;
@@ -375,7 +378,7 @@ button.secondary{background:#999}
         <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
         <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang" /></div>
         <div class="field grow"><label>Địa chỉ</label><input id="dia_chi" /></div>
-        <div class="field" id="mst-wrapper">
+        <div class="field" id="mst-wrapper" style="position: relative;">
             <label>Mã số thuế</label>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <input id="mst" inputmode="numeric" maxlength="15" style="flex: 1;" />
