@@ -335,17 +335,6 @@ button.secondary{background:#999}
     background: #ff8a1a;
 }
 
-/* Hide elements based on KH type */
-.group-cong-no,
-.group-vanglai-doanh-nghiep,
-.group-vanglai-ca-nhan {
-    display: none;
-}
-.group-cong-no.active,
-.group-vanglai-doanh-nghiep.active,
-.group-vanglai-ca-nhan.active {
-    display: block;
-}
 
 </style>
 </head>
@@ -379,56 +368,25 @@ button.secondary{background:#999}
             <label><input type="radio" name="loai_kh" value="vanglai-ca-nhan" onchange="changeKHType('vanglai-ca-nhan')"> KH cá nhân</label>
         </div>
     </div>
-     <!-- KH công nợ -->
-    <div class="group-cong-no">
-        <div class="form-group-title">Thông tin khách hàng công nợ</div>
-        <div class="master-section row-divider">
-            <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
-            <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang" /></div>
-            <div class="field grow"><label>Địa chỉ</label><input id="dia_chi" /></div>
-            <div class="field"><label>Mã số thuế</label><input id="mst" inputmode="numeric" maxlength="15" style="background:#f5f5f5" /></div>
-        </div>
-        <div class="master-section">
-            <div class="field"><label>Email</label><input id="email" /></div>
-            <div class="field grow"><label>Ghi chú</label><input id="ghi_chu" /></div>
-        </div>
-    </div>
-    <!-- KH vãng lai doanh nghiệp (có API thuế) -->
-    <div class="group-vanglai-doanh-nghiep">
-        <div class="form-group-title">Thông tin khách hàng vãng lai doanh nghiệp</div>
-        <div class="master-section row-divider">
-            <div class="field"><label>Ngày</label><input type="date" id="ngay2" /></div>
-            <div class="lookup-wrapper">
-                <div class="field grow">
-                    <label>Mã số thuế</label>
-                    <input id="mst2" inputmode="numeric" maxlength="15" placeholder="Nhập MST để tìm kiếm" />
-                    <div class="lookup-status" id="lookup-status"></div>
-                </div>
-                <button type="button" class="btn-lookup" id="btn-lookup-tax">🔍 Tra cứu</button>
+    
+    <!-- Thông tin khách hàng - Layout thống nhất cho tất cả loại KH -->
+    <div id="kh-form-title" class="form-group-title">Thông tin khách hàng công nợ</div>
+    <div class="master-section row-divider">
+        <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
+        <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang" /></div>
+        <div class="field grow"><label>Địa chỉ</label><input id="dia_chi" /></div>
+        <div class="field" id="mst-wrapper">
+            <label>Mã số thuế</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input id="mst" inputmode="numeric" maxlength="15" style="flex: 1;" />
+                <button type="button" class="btn-lookup" id="btn-lookup-tax" style="display: none;">🔍 Tra cứu</button>
             </div>
-        </div>
-        <div class="master-section row-divider">
-            <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang2" readonly style="background:#f5f5f5" /></div>
-            <div class="field grow"><label>Địa chỉ</label><input id="dia_chi2" readonly style="background:#f5f5f5" /></div>
-        </div>
-        <div class="master-section">
-            <div class="field"><label>Email</label><input id="email2" /></div>
-            <div class="field grow"><label>Ghi chú</label><input id="ghi_chu2" /></div>
+            <div class="lookup-status" id="lookup-status" style="display: none;"></div>
         </div>
     </div>
-    <!-- KH vãng lai cá nhân (không MST) -->
-    <div class="group-vanglai-ca-nhan">
-        <div class="form-group-title">Thông tin khách hàng vãng lai cá nhân</div>
-        <div class="master-section row-divider">
-            <div class="field"><label>Ngày</label><input type="date" id="ngay3" /></div>
-            <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang3" /></div>
-            <div class="field grow"><label>Địa chỉ</label><input id="dia_chi3" /></div>
-            <div class="field"><label>Mã số thuế</label><input id="mst" inputmode="numeric" maxlength="15"  style="background:#f5f5f5" /></div>
-        </div>
-        <div class="master-section">
-            <div class="field"><label>Email</label><input id="email3" /></div>
-            <div class="field grow"><label>Ghi chú</label><input id="ghi_chu3" /></div>
-        </div>
+    <div class="master-section">
+        <div class="field"><label>Email</label><input id="email" /></div>
+        <div class="field grow"><label>Ghi chú</label><input id="ghi_chu" /></div>
     </div>
 </div>
 
@@ -445,15 +403,53 @@ button.secondary{background:#999}
 
 <script>
 /* ===== CHANGE KH TYPE ===== */
+let currentKHType = 'cong-no';
+
 function changeKHType(type) {
-    // Remove active class from all groups
-    document.querySelectorAll('.group-cong-no, .group-vanglai-doanh-nghiep, .group-vanglai-ca-nhan')
-        .forEach(el => el.classList.remove('active'));
+    currentKHType = type;
     
-    // Add active class to selected group
-    const targetGroup = document.querySelector('.group-' + type);
-    if (targetGroup) {
-        targetGroup.classList.add('active');
+    const titleEl = document.getElementById('kh-form-title');
+    const btnLookup = document.getElementById('btn-lookup-tax');
+    const lookupStatus = document.getElementById('lookup-status');
+    const mstInput = document.getElementById('mst');
+    const khachHangInput = document.getElementById('khach_hang');
+    const diaChiInput = document.getElementById('dia_chi');
+    
+    // Reset fields styles
+    mstInput.style.background = '';
+    mstInput.placeholder = '';
+    mstInput.readOnly = false;
+    khachHangInput.style.background = '';
+    khachHangInput.readOnly = false;
+    diaChiInput.style.background = '';
+    diaChiInput.readOnly = false;
+    
+    switch(type) {
+        case 'cong-no':
+            titleEl.textContent = 'Thông tin khách hàng công nợ';
+            btnLookup.style.display = 'none';
+            lookupStatus.style.display = 'none';
+            mstInput.style.background = '#f5f5f5';
+            break;
+            
+        case 'vanglai-doanh-nghiep':
+            titleEl.textContent = 'Thông tin khách hàng vãng lai doanh nghiệp';
+            btnLookup.style.display = 'inline-block';
+            lookupStatus.style.display = 'block';
+            mstInput.placeholder = 'Nhập MST để tìm kiếm';
+            // Set readonly for auto-filled fields
+            khachHangInput.style.background = '#f5f5f5';
+            khachHangInput.readOnly = true;
+            diaChiInput.style.background = '#f5f5f5';
+            diaChiInput.readOnly = true;
+            break;
+            
+        case 'vanglai-ca-nhan':
+            titleEl.textContent = 'Thông tin khách hàng vãng lai cá nhân';
+            btnLookup.style.display = 'none';
+            lookupStatus.style.display = 'none';
+            mstInput.style.background = '#f5f5f5';
+            break;
     }
 }
 
@@ -683,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ===== LOOKUP MST via VietQR API ===== */
 document.addEventListener('DOMContentLoaded', () => {
-    const mstInput = document.getElementById('mst2');
+    const mstInput = document.getElementById('mst');
     const btnLookup = document.getElementById('btn-lookup-tax');
     const lookupStatus = document.getElementById('lookup-status');
 
@@ -704,15 +700,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.code === '00' && data.data) {
                 // Điền thông tin vào form
-                document.getElementById('khach_hang2').value = data.data.name || '';
-                document.getElementById('dia_chi2').value = data.data.address || '';
+                document.getElementById('khach_hang').value = data.data.name || '';
+                document.getElementById('dia_chi').value = data.data.address || '';
                 lookupStatus.innerText = '✓ Tra cứu thành công';
                 lookupStatus.style.color = '#27ae60';
             } else {
                 lookupStatus.innerText = 'Không tìm thấy thông tin MST';
                 lookupStatus.style.color = '#e74c3c';
-                document.getElementById('khach_hang2').value = '';
-                document.getElementById('dia_chi2').value = '';
+                document.getElementById('khach_hang').value = '';
+                document.getElementById('dia_chi').value = '';
             }
         } catch (error) {
             console.error('Lookup error:', error);
@@ -726,7 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Enter trong input MST
     mstInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && currentKHType === 'vanglai-doanh-nghiep') {
             e.preventDefault();
             lookupMST();
         }
