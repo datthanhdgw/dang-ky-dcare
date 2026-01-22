@@ -14,11 +14,41 @@ $pdo = new PDO(
     ]
 );
 
-/* ===== LOAD ===== */
+/* ===== LOAD CENTERS ===== */
+if (($_GET['action'] ?? '') === 'centers') {
+    $stmt = $pdo->query("SELECT center_id, center_name, zone FROM center ORDER BY center_name");
+    $centers = $stmt->fetchAll();
+    echo json_encode(['centers' => $centers]);
+    exit;
+}
+
+/* ===== LOAD CUSTOMER TYPES ===== */
+if (($_GET['action'] ?? '') === 'customer_types') {
+    $stmt = $pdo->query("SELECT id, type_name, note FROM customer_type ORDER BY id");
+    $types = $stmt->fetchAll();
+    echo json_encode(['types' => $types]);
+    exit;
+}
+
+/* ===== LOAD PSC ===== */
 if (($_GET['action'] ?? '') === 'load') {
-    $so = $_GET['so_phieu'] ?? '';
-    $stmt = $pdo->prepare("SELECT * FROM psc_master WHERE so_phieu_psc=?");
-    $stmt->execute([$so]);
+    $pscNo = $_GET['psc_no'] ?? '';
+    
+    // Load master with customer and center info
+    $stmt = $pdo->prepare("
+        SELECT m.*, 
+               c.center_name, c.zone,
+               cu.customer_id as cust_code, cu.customer_name, cu.address, cu.mst, cu.email, cu.note as customer_note,
+               ctm.type_id as customer_type_id,
+               ct.type_name as customer_type_name
+        FROM psc_masters m
+        LEFT JOIN center c ON m.center_id = c.center_id
+        LEFT JOIN customer cu ON m.customer_id = cu.id
+        LEFT JOIN customer_type_mapping ctm ON cu.id = ctm.customer_id
+        LEFT JOIN customer_type ct ON ctm.type_id = ct.id
+        WHERE m.psc_no = ?
+    ");
+    $stmt->execute([$pscNo]);
     $m = $stmt->fetch();
 
     if (!$m) {
@@ -26,138 +56,162 @@ if (($_GET['action'] ?? '') === 'load') {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM psc_detail WHERE master_id=?");
+    // Load parts
+    $stmt = $pdo->prepare("SELECT * FROM pcs_part WHERE psc_id = ? ORDER BY id");
     $stmt->execute([$m['id']]);
 
-    $details=[];
-    while($r=$stmt->fetch()){
-        $details[]=[
-            $r['linh_kien'],$r['so_luong'],$r['don_gia'],
-            $r['doanh_thu'],$r['thue_suat'],$r['thue_gtgt'],
-            $r['thanh_tien'],$r['tien_phieu_thu'],
-            $r['chenhlech'],$r['ghi_chu']
+    $details = [];
+    while($r = $stmt->fetch()){
+        $details[] = [
+            $r['part_name'],
+            $r['quantity'],
+            $r['unit_price'],
+            $r['revenue'],
+            $r['vat_pct'],
+            $r['vat_amt'],
+            $r['total_amt'],
+            $r['receipt_amt'],
+            $r['diff_amt'],
+            $r['note']
         ];
     }
 
-    echo json_encode(['exists'=>true,'master'=>$m,'details'=>$details]);
+    echo json_encode(['exists'=>true, 'master'=>$m, 'details'=>$details]);
     exit;
 }
 
-/* ===== SAVE ===== */
-
+/* ===== SAVE PSC ===== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     header('Content-Type: application/json; charset=utf-8');
 
     try {
-
-        $data = json_decode(file_get_contents("php://input"), true);
-        if (!$data) {
-            throw new Exception('Payload JSON không hợp lệ');
+        
+        $rawInput = file_get_contents("php://input");
+        $data = json_decode($rawInput, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('JSON decode error: ' . json_last_error_msg() . ' | Raw input: ' . substr($rawInput, 0, 200));
+        }
+        
+        if (!$data || !is_array($data)) {
+            throw new Exception('Payload JSON không hợp lệ hoặc rỗng');
         }
 
         $m = $data['master'] ?? null;
         $rows = $data['details'] ?? [];
 
-        if (!$m || !isset($m['so_phieu'])) {
+        if (!$m || !isset($m['psc_no'])) {
             throw new Exception('Thiếu dữ liệu master');
         }
 
         $pdo->beginTransaction();
 
-        // ===== CHECK MASTER =====
-        $stmt = $pdo->prepare("SELECT id FROM psc_master WHERE so_phieu_psc=?");
-        $stmt->execute([$m['so_phieu']]);
-        $id = $stmt->fetchColumn();
+        // ===== CHECK EXISTING PSC ===== 
+        $stmt = $pdo->prepare("SELECT id, customer_id FROM psc_masters WHERE psc_no = ?");
+        $stmt->execute([$m['psc_no']]);
+        $existing = $stmt->fetch();
+        $masterId = $existing ? $existing['id'] : null;
+        $customerId = $existing ? $existing['customer_id'] : null;
 
+        // ===== UPSERT CUSTOMER =====
+        if ($customerId) {
+            // Update existing customer
+            $pdo->prepare("
+                UPDATE customer SET 
+                    customer_name = ?, address = ?, mst = ?, email = ?, note = ?, updated_at = NOW()
+                WHERE id = ?
+            ")->execute([
+                $m['customer_name'],
+                $m['address'],
+                $m['mst'] ?? '',
+                $m['email'] ?? '',
+                $m['note'] ?? '',
+                $customerId
+            ]);
+        } else {
+            // Create new customer
+            $emailValue = !empty($m['email']) ? $m['email'] : 'no-email-' . uniqid() . '@placeholder.local';
+            $pdo->prepare("
+                INSERT INTO customer (customer_id, customer_name, address, mst, email, note, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ")->execute([
+                'CUS_' . uniqid(),
+                $m['customer_name'],
+                $m['address'],
+                $m['mst'] ?? '',
+                $emailValue,
+                $m['note'] ?? ''
+            ]);
+            $customerId = $pdo->lastInsertId();
 
-        // Chuẩn hóa ngày giao hàng
-        $ngayGoodDelivery = null;
-        if (!empty($m['ngay'])) {
-            $ngayGoodDelivery = $m['ngay']; // yyyy-mm-dd
+            // Insert customer type mapping
+            $customerTypeId = $m['customer_type_id'] ?? null;
+            if ($customerTypeId) {
+                $pdo->prepare("
+                    INSERT INTO customer_type_mapping (customer_id, type_id, created_at)
+                    VALUES (?, ?, NOW())
+                ")->execute([$customerId, $customerTypeId]);
+            }
         }
 
-        if ($id) {
+        // ===== UPSERT PSC MASTER =====
+        if ($masterId) {
             // UPDATE
             $pdo->prepare("
-                UPDATE psc_master SET
-                    branch_code=?, branch_name=?,
-                    ngay_good_delivery=?, ten_khach_hang=?, dia_chi=?, mst=?, email_nhan_hd=?, ghi_chu=?,
-                    tong_doanh_thu=?, tong_thue=?, tong_thanh_tien=?
-                WHERE id=?
+                UPDATE psc_masters SET
+                    center_id = ?, customer_id = ?, updated_at = NOW()
+                WHERE id = ?
             ")->execute([
-                $m['branch_code'],
-                $m['branch_name'],
-                $ngayGoodDelivery,
-                $m['khach_hang'],
-                $m['dia_chi'],
-                $m['mst'],
-                $m['email'],
-                $m['ghi_chu'],
-                (float)$m['tong_doanh_thu'],
-                (float)$m['tong_thue'],
-                (float)$m['tong_thanh_tien'],
-                $id
+                $m['center_id'],
+                $customerId,
+                $masterId
             ]);
 
-            $pdo->prepare("DELETE FROM psc_detail WHERE master_id=?")->execute([$id]);
-            $masterId = $id;
+            // Delete old parts
+            $pdo->prepare("DELETE FROM pcs_part WHERE psc_id = ?")->execute([$masterId]);
 
         } else {
             // INSERT
             $pdo->prepare("
-                INSERT INTO psc_master
-                (branch_code, branch_name, so_phieu_psc,
-                 ngay_good_delivery, ten_khach_hang, dia_chi, mst, email_nhan_hd, ghi_chu,
-                 tong_doanh_thu, tong_thue, tong_thanh_tien)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO psc_masters (psc_no, center_id, customer_id, created_at)
+                VALUES (?, ?, ?, NOW())
             ")->execute([
-                $m['branch_code'],
-                $m['branch_name'],
-                $m['so_phieu'],
-                $ngayGoodDelivery,
-                $m['khach_hang'],
-                $m['dia_chi'],
-                $m['mst'],
-                $m['email'],
-                $m['ghi_chu'],
-                (float)$m['tong_doanh_thu'],
-                (float)$m['tong_thue'],
-                (float)$m['tong_thanh_tien']
+                $m['psc_no'],
+                $m['center_id'],
+                $customerId
             ]);
 
             $masterId = $pdo->lastInsertId();
         }
 
-        // ===== INSERT DETAIL =====
-        $stmtDetail = $pdo->prepare("
-            INSERT INTO psc_detail
-            (master_id, linh_kien, so_luong, don_gia, doanh_thu,
-             thue_suat, thue_gtgt, thanh_tien, tien_phieu_thu, chenhlech, ghi_chu)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        // ===== INSERT PARTS =====
+        $stmtPart = $pdo->prepare("
+            INSERT INTO pcs_part 
+            (psc_id, part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, receipt_amt, diff_amt, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $insertedRows = 0;
 
-        foreach ($rows as $idx => $r) {
-
-            // ✅ FIX 2: KHÔNG CÓ MÃ HÀNG → Bỏ
+        foreach ($rows as $r) {
+            // Skip empty rows
             if (!isset($r[0]) || trim((string)$r[0]) === '') {
                 continue;
             }
 
-            $stmtDetail->execute([
+            $stmtPart->execute([
                 $masterId,
-                $r[0],                     // linh_kien
-                (int)($r[1] ?? 0),
-                (float)($r[2] ?? 0),
-                (float)($r[3] ?? 0),
-                (float)($r[4] ?? 0),
-                (float)($r[5] ?? 0),
-                (float)($r[6] ?? 0),
-                (float)($r[7] ?? 0),
-                (float)($r[8] ?? 0),
-                $r[9] ?? ''
+                $r[0],                     // part_name
+                (int)($r[1] ?? 0),         // quantity
+                (float)($r[2] ?? 0),       // unit_price
+                (float)($r[3] ?? 0),       // revenue
+                (int)($r[4] ?? 0),         // vat_pct
+                (float)($r[5] ?? 0),       // vat_amt
+                (float)($r[6] ?? 0),       // total_amt
+                (float)($r[7] ?? 0),       // receipt_amt
+                (float)($r[8] ?? 0),       // diff_amt
+                $r[9] ?? ''                // note
             ]);
 
             $insertedRows++;
@@ -168,7 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             'status' => 'ok',
             'master_id' => $masterId,
-            'detail_inserted' => $insertedRows
+            'customer_id' => $customerId,
+            'parts_inserted' => $insertedRows
         ]);
         exit;
 
@@ -307,15 +362,78 @@ textarea{min-height:32px}
 .detail{background:#fff;margin-top:8px;padding:6px;border-radius:8px;overflow-x:auto}
 #hot{width:100%;min-height:380px;overflow:hidden}
 
-.footer{
-    margin-top:10px;
-    display:flex;justify-content:space-between
+/* Action Bar - Sticky Footer */
+.action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff6f6ff;
+    border-top: 1px solid #f7ebebff;
+    padding: 12px 20px;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
 }
-button{
-    background:#ff9f43;color:white;border:none;
-    padding:8px 20px;border-radius:20px;font-size:14px
+
+.action-bar-content {
+    max-width: 1400px;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
-button.secondary{background:#999}
+
+/* Button Group */
+.btn-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* Base Button Styles */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Secondary Button - Tạo mới */
+.btn-secondary {
+    background: #ff9f43;
+    color: #ffffffff;
+    border: 1px solid #ccc;
+}
+
+.btn-secondary:hover {
+    background: #ff9f43;
+}
+
+/* Primary Button - Lưu */
+.btn-primary {
+    background: #ff9f43;
+    color: #ffffffff;
+}
+
+.btn-primary:hover {
+    background: #ff8a1a;
+}
+
+.btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Padding for sticky footer */
+.wrap {
+    padding-bottom: 70px;
+}
+
 .disabled{opacity:.5;pointer-events:none}
 
 .htCore .active-row td{background:#fffaf3!important}
@@ -338,6 +456,18 @@ button.secondary{background:#999}
     background: #ff8a1a;
 }
 
+.btn-reset {
+    background: #6c757d;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.btn-reset:hover {
+    background: #5a6268;
+}
 
 </style>
 </head>
@@ -355,6 +485,10 @@ button.secondary{background:#999}
         🔍 Tìm
     </button>
 
+    <button type="button" id="btnResetPSC" class="btn-reset" onclick="resetPSC()">
+        🔄 Reset
+    </button>
+
     <span>CHI NHÁNH</span>
     <select id="branch"></select>
 
@@ -365,17 +499,16 @@ button.secondary{background:#999}
     <!-- Loại khách hàng - Section nổi bật trên cùng -->
     <div class="kh-type-section">
         <span class="form-group-title">Loại khách hàng</span>
-        <div class="kh-type-group">
-            <label><input type="radio" name="loai_kh" value="cong-no" checked onchange="changeKHType('cong-no')"> KH công nợ</label>
-            <label><input type="radio" name="loai_kh" value="vanglai-doanh-nghiep" onchange="changeKHType('vanglai-doanh-nghiep')"> KH doanh nghiệp</label>
-            <label><input type="radio" name="loai_kh" value="vanglai-ca-nhan" onchange="changeKHType('vanglai-ca-nhan')"> KH cá nhân</label>
+        <div class="kh-type-group" id="kh-type-container">
+            <!-- Sẽ được render bằng JavaScript từ database -->
+            <span style="color:#999">Đang tải...</span>
         </div>
     </div>
     
     <!-- Thông tin khách hàng - Layout thống nhất cho tất cả loại KH -->
     <div id="kh-form-title" class="form-group-title">Thông tin khách hàng công nợ</div>
     <div class="master-section row-divider">
-        <div class="field"><label>Ngày</label><input type="date" id="ngay" /></div>
+        <div class="field"><label>Mã KH</label><input id="cust_code" style="width: 120px;" readonly /></div>
         <div class="field grow"><label>Tên khách hàng</label><input id="khach_hang" /></div>
         <div class="field grow"><label>Địa chỉ</label><input id="dia_chi" /></div>
         <div class="field" id="mst-wrapper" style="position: relative;">
@@ -397,19 +530,68 @@ button.secondary{background:#999}
     <div id="hot"></div>
 </div>
 
-<div class="footer">
-    <button id="btnNew" onclick="newDoc()">➕ Tạo mới</button>
-    <button id="btnSave" onclick="saveData()" disabled>💾 Lưu</button>
+<!-- Sticky Action Bar -->
+<div class="action-bar">
+    <div class="action-bar-content">
+        <div class="btn-group">
+            <button type="button" id="btnNew" class="btn btn-secondary" onclick="newDoc()">
+                <span class="btn-icon">📄</span>
+                <span>Tạo mới</span>
+            </button>
+            <button type="button" id="btnSave" class="btn btn-primary" onclick="saveData()" disabled>
+                <span class="btn-icon">💾</span>
+                <span>Lưu</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 </div>
 
 <script>
-/* ===== CHANGE KH TYPE ===== */
-let currentKHType = 'cong-no';
+/* ===== CUSTOMER TYPES (Load from DB) ===== */
+let customerTypesData = [];
+let selectedCustomerTypeId = null;
+let currentKHType = '';
 
-function changeKHType(type) {
-    currentKHType = type;
+// Load customer types from database
+fetch('?action=customer_types')
+    .then(r => r.json())
+    .then(res => {
+        customerTypesData = res.types || [];
+        renderCustomerTypes();
+    })
+    .catch(err => {
+        console.error('Error loading customer types:', err);
+        document.getElementById('kh-type-container').innerHTML = '<span style="color:#e74c3c">Lỗi tải loại KH</span>';
+    });
+
+function renderCustomerTypes() {
+    const container = document.getElementById('kh-type-container');
+    if (!customerTypesData.length) {
+        container.innerHTML = '<span style="color:#999">Không có dữ liệu loại KH</span>';
+        return;
+    }
+    
+    container.innerHTML = customerTypesData.map((type, index) => {
+        const checked = index === 0 ? 'checked' : '';
+        return `<label>
+            <input type="radio" name="loai_kh" value="${type.id}" ${checked} onchange="changeKHType(${type.id}, '${type.type_name}')">
+            ${type.type_name}
+        </label>`;
+    }).join('');
+    
+    // Set default selection
+    if (customerTypesData.length > 0) {
+        selectedCustomerTypeId = customerTypesData[0].id;
+        currentKHType = customerTypesData[0].type_name;
+        changeKHType(customerTypesData[0].id, customerTypesData[0].type_name);
+    }
+}
+
+function changeKHType(typeId, typeName) {
+    selectedCustomerTypeId = typeId;
+    currentKHType = typeName;
     
     const titleEl = document.getElementById('kh-form-title');
     const btnLookup = document.getElementById('btn-lookup-tax');
@@ -427,60 +609,83 @@ function changeKHType(type) {
     diaChiInput.style.background = '';
     diaChiInput.readOnly = false;
     
-    switch(type) {
-        case 'cong-no':
-            titleEl.textContent = 'Thông tin khách hàng công nợ';
-            btnLookup.style.display = 'none';
-            lookupStatus.style.display = 'none';
-            mstInput.style.background = '#f5f5f5';
-            break;
-            
-        case 'vanglai-doanh-nghiep':
-            titleEl.textContent = 'Thông tin khách hàng vãng lai doanh nghiệp';
-            btnLookup.style.display = 'inline-block';
-            lookupStatus.style.display = 'block';
-            mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            // Set readonly for auto-filled fields
-            khachHangInput.style.background = '#f5f5f5';
-            khachHangInput.readOnly = true;
-            diaChiInput.style.background = '#f5f5f5';
-            diaChiInput.readOnly = true;
-            break;
-            
-        case 'vanglai-ca-nhan':
-            titleEl.textContent = 'Thông tin khách hàng vãng lai cá nhân';
-            btnLookup.style.display = 'none';
-            lookupStatus.style.display = 'none';
-            mstInput.style.background = '#f5f5f5';
-            break;
+    // Update title based on type name
+    titleEl.textContent = 'Thông tin ' + typeName.toLowerCase();
+    
+    // Check if it's "KH doanh nghiệp" for MST lookup feature
+    if (typeName.toLowerCase().includes('doanh nghiệp')) {
+        btnLookup.style.display = 'inline-block';
+        lookupStatus.style.display = 'block';
+        mstInput.placeholder = 'Nhập MST để tìm kiếm';
+        khachHangInput.style.background = '#f5f5f5';
+        khachHangInput.readOnly = true;
+        diaChiInput.style.background = '#f5f5f5';
+        diaChiInput.readOnly = true;
+    } else {
+        btnLookup.style.display = 'none';
+        lookupStatus.style.display = 'none';
+        mstInput.style.background = '#f5f5f5';
     }
 }
 
-// Initialize: show default KH type on page load
-document.addEventListener('DOMContentLoaded', () => {
-    changeKHType('cong-no'); // Default is KH công nợ
-});
+// Set customer type and optionally disable other radio buttons
+function setCustomerType(typeId, typeName, disableOthers = false) {
+    selectedCustomerTypeId = typeId;
+    currentKHType = typeName;
+    
+    const radios = document.querySelectorAll('input[name="loai_kh"]');
+    radios.forEach(radio => {
+        const label = radio.parentElement;
+        if (radio.value == typeId) {
+            radio.checked = true;
+            radio.disabled = false;
+            label.style.opacity = '1';
+        } else if (disableOthers) {
+            radio.disabled = true;
+            label.style.opacity = '0.4';
+        }
+    });
+    
+    // Trigger the change handler
+    changeKHType(typeId, typeName);
+}
 
-/* ===== BRANCH ===== */
-const BRANCHES={
-  "CN1_HCM":"B2X_QUAN 7_HO CHI MINH",
-  "CN1_CT":"B2X_NINH KIEU_CAN THO",
-  "CN1_DT":"B2X_CAO LANH_DONG THAP",
-  "CN1_BT":"B2X_PHAN THIET_BINH THUAN",
-  "CN1_BRVT":"B2X_VUNG TAU_BA RIA VUNG TAU",
-  "CN2_BRVT":"B2X_BA RIA_BA RIA VUNG TAU",
-  "CN1_HN":"B2X_TAY HO_HA NOI"
-};
-const branchSelect=document.getElementById('branch');
-Object.keys(BRANCHES).forEach(c=>{
-  const o=document.createElement('option');
-  o.value=c;o.textContent=`${c} - ${BRANCHES[c]}`;
-  branchSelect.appendChild(o);
-});
-branchSelect.value=new URLSearchParams(location.search).get('branch')
-    || localStorage.getItem('LAST_BRANCH') || 'CN1_HCM';
-localStorage.setItem('LAST_BRANCH',branchSelect.value);
-branchSelect.onchange=()=>localStorage.setItem('LAST_BRANCH',branchSelect.value);
+// Enable all customer type radio buttons
+function enableAllCustomerTypes() {
+    const radios = document.querySelectorAll('input[name="loai_kh"]');
+    radios.forEach(radio => {
+        radio.disabled = false;
+        radio.parentElement.style.opacity = '1';
+    });
+}
+
+/* ===== CENTERS (Load from DB) ===== */
+const centerSelect = document.getElementById('branch');
+let centersData = [];
+
+// Load centers from database
+fetch('?action=centers')
+    .then(r => r.json())
+    .then(res => {
+        centersData = res.centers || [];
+        centersData.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.center_id;
+            o.textContent = `${c.center_name}${c.zone ? ' - ' + c.zone : ''}`;
+            centerSelect.appendChild(o);
+        });
+        // Set default from URL or localStorage
+        const savedCenter = new URLSearchParams(location.search).get('center') 
+            || localStorage.getItem('LAST_CENTER');
+        if (savedCenter && centersData.find(c => c.center_id == savedCenter)) {
+            centerSelect.value = savedCenter;
+        } else if (centersData.length > 0) {
+            centerSelect.value = centersData[0].center_id;
+        }
+        localStorage.setItem('LAST_CENTER', centerSelect.value);
+    });
+
+centerSelect.onchange = () => localStorage.setItem('LAST_CENTER', centerSelect.value);
 
 /* ===== GRID ===== */
 const moneyCol = {
@@ -625,31 +830,68 @@ function newDoc(){
     lockForm();
 }
 
+function resetPSC(){
+    // Clear all inputs including PSC number
+    document.querySelectorAll('#masterForm input, #masterForm textarea').forEach(i => i.value = '');
+    document.getElementById('so_phieu').value = '';
+    document.getElementById('cust_code').value = '';
+    
+    // Reset grid data
+    hot.loadData([]);
+    hot.alter('insert_row_below', hot.countRows() - 1);
+    updateSummary();
+    
+    // Enable PSC input and focus
+    so_phieu.disabled = false;
+    so_phieu.focus();
+    
+    // Reset status
+    statusEl.innerText = 'Chưa chọn phiếu';
+    
+    // Lock form until user enters new PSC
+    lockForm();
+    
+    // Reset KH type to default (first type in the list) and enable all
+    enableAllCustomerTypes();
+    if (customerTypesData.length > 0) {
+        const firstType = customerTypesData[0];
+        document.querySelector(`input[name="loai_kh"][value="${firstType.id}"]`).checked = true;
+        changeKHType(firstType.id, firstType.type_name);
+    }
+}
+
 function saveData(){
-    const rows=hot.getData().slice(0,-1);
-    let dt=0,th=0,tt=0;
-    rows.forEach(r=>{dt+=+r[3]||0;th+=+r[5]||0;tt+=+r[6]||0});
-    fetch('',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            master:{
-                so_phieu:so_phieu.value,
-                branch_code:branchSelect.value,
-                branch_name:BRANCHES[branchSelect.value],
-                ngay:ngay.value,
-                khach_hang:khach_hang.value,
-                dia_chi:dia_chi.value,
-                mst:mst.value,
-                email:email.value,
-                ghi_chu:ghi_chu.value,
-                tong_doanh_thu:dt,
-                tong_thue:th,
-                tong_thanh_tien:tt
+    const rows = hot.getData().slice(0,-1);
+    console.log('Saving rows:', rows);
+
+    fetch('', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            master: {
+                psc_no: so_phieu.value,
+                center_id: centerSelect.value,
+                customer_type_id: selectedCustomerTypeId,
+                customer_name: khach_hang.value,
+                address: dia_chi.value,
+                mst: mst.value,
+                email: email.value,
+                note: ghi_chu.value
             },
-            details:rows
+            details: rows
         })
-    }).then(()=>alert('Đã lưu'));
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'ok') {
+            alert('Đã lưu thành công!');
+        } else {
+            alert('Lỗi: ' + (res.message || 'Không xác định'));
+        }
+    })
+    .catch(err => {
+        alert('Lỗi kết nối: ' + err.message);
+    });
 }
 /* ===== FIX ENTER CHO SỐ PHIẾU PSC ===== */
 
@@ -737,17 +979,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function loadPSC(soPhieu) {
+function loadPSC(pscNo) {
 
     statusEl.innerText = 'Đang load phiếu';
 
-    fetch(`?action=load&so_phieu=${encodeURIComponent(soPhieu)}`)
+    fetch(`?action=load&psc_no=${encodeURIComponent(pscNo)}`)
         .then(r => r.json())
         .then(res => {
 
             unlockForm();
             so_phieu.disabled = true;
-            console.log('LOAD PSC:', res);
             if (!res.exists) {
                 statusEl.innerText = 'Phiếu mới';
                 hot.loadData([]);
@@ -758,19 +999,36 @@ function loadPSC(soPhieu) {
             }
 
             statusEl.innerText = 'Đang sửa phiếu';
+            console.log('Load result:', res);
+            // Load customer info from new schema
+            cust_code.value = res.master.cust_code || '';
+            khach_hang.value = res.master.customer_name || '';
+            dia_chi.value = res.master.address || '';
+            mst.value = res.master.mst || '';
+            email.value = res.master.email || '';
+            ghi_chu.value = res.master.customer_note || '';
+            
+            // Set center dropdown
+            if (res.master.center_id) {
+                centerSelect.value = res.master.center_id;
+            }
 
-            ngay.value = res.master.ngay_good_delivery;
-            khach_hang.value = res.master.ten_khach_hang;
-            dia_chi.value = res.master.dia_chi;
-            mst.value = res.master.mst;
-            email.value = res.master.email_nhan_hd;
-            ghi_chu.value = res.master.ghi_chu;
-            branchSelect.value = res.master.branch_code; 
+            // Set customer type and disable other options
+            if (res.master.customer_type_id) {
+                setCustomerType(res.master.customer_type_id, res.master.customer_type_name, true);
+            } else {
+                // Enable all radio buttons if no type set
+                enableAllCustomerTypes();
+            }
 
             hot.loadData(res.details);
             hot.alter('insert_row_below', hot.countRows() - 1);
             updateSummary();
             setTimeout(() => hot.selectCell(0,0), 50);
+        })
+        .catch(err => {
+            console.error('Load error:', err);
+            statusEl.innerText = 'Lỗi load phiếu';
         });
 }
 
