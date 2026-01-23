@@ -1,0 +1,304 @@
+const FormModule = {
+    customerTypesData: [],
+    selectedCustomerTypeId: null,
+    currentKHType: '',
+
+    // Form elements
+    elements: {
+        masterForm: null,
+        detailSection: null,
+        btnSave: null,
+        statusEl: null,
+        khTypeContainer: null,
+        khFormTitle: null,
+        btnLookupTax: null,
+        lookupStatus: null,
+        mstInput: null,
+        khachHangInput: null,
+        diaChiInput: null,
+        soPhieu: null,
+        custCode: null,
+        email: null,
+        ghiChu: null,
+        centerSelect: null
+    },
+
+    /**
+     * Initialize form module
+     */
+    init() {
+        // Get DOM elements
+        this.elements.masterForm = document.getElementById('masterForm');
+        this.elements.detailSection = document.getElementById('detailSection');
+        this.elements.btnSave = document.getElementById('btnSave');
+        this.elements.statusEl = document.getElementById('statusEl');
+        this.elements.khTypeContainer = document.getElementById('kh-type-container');
+        this.elements.khFormTitle = document.getElementById('kh-form-title');
+        this.elements.btnLookupTax = document.getElementById('btn-lookup-tax');
+        this.elements.lookupStatus = document.getElementById('lookup-status');
+        this.elements.mstInput = document.getElementById('mst');
+        this.elements.khachHangInput = document.getElementById('khach_hang');
+        this.elements.diaChiInput = document.getElementById('dia_chi');
+        this.elements.soPhieu = document.getElementById('so_phieu');
+        this.elements.custCode = document.getElementById('cust_code');
+        this.elements.email = document.getElementById('email');
+        this.elements.ghiChu = document.getElementById('ghi_chu');
+        this.elements.centerSelect = document.getElementById('branch');
+
+        // Load customer types
+        this.loadCustomerTypes();
+
+        // Setup MST lookup
+        this.setupMSTLookup();
+
+        // Lock form initially
+        this.lock();
+    },
+
+    /**
+     * Load customer types from API
+     */
+    async loadCustomerTypes() {
+        try {
+            this.customerTypesData = await API.fetchCustomerTypes();
+            this.renderCustomerTypes();
+        } catch (err) {
+            console.error('Error loading customer types:', err);
+            this.elements.khTypeContainer.innerHTML = '<span style="color:#e74c3c">Lỗi tải loại KH</span>';
+        }
+    },
+
+    /**
+     * Render customer type radio buttons
+     */
+    renderCustomerTypes() {
+        const container = this.elements.khTypeContainer;
+
+        if (!this.customerTypesData.length) {
+            container.innerHTML = '<span style="color:#999">Không có dữ liệu loại KH</span>';
+            return;
+        }
+
+        container.innerHTML = this.customerTypesData.map((type, index) => {
+            const checked = index === 0 ? 'checked' : '';
+            return `<label>
+                <input type="radio" name="loai_kh" value="${type.id}" ${checked} onchange="FormModule.changeKHType(${type.id}, '${type.type_name}')">
+                ${type.type_name}
+            </label>`;
+        }).join('');
+
+        // Set default selection
+        if (this.customerTypesData.length > 0) {
+            this.selectedCustomerTypeId = this.customerTypesData[0].id;
+            this.currentKHType = this.customerTypesData[0].type_name;
+            this.changeKHType(this.customerTypesData[0].id, this.customerTypesData[0].type_name);
+        }
+    },
+
+    /**
+     * Change customer type
+     * @param {number} typeId 
+     * @param {string} typeName 
+     */
+    changeKHType(typeId, typeName) {
+        this.selectedCustomerTypeId = typeId;
+        this.currentKHType = typeName;
+
+        // Reset fields styles
+        this.elements.mstInput.style.background = '';
+        this.elements.mstInput.placeholder = '';
+        this.elements.mstInput.readOnly = false;
+        this.elements.khachHangInput.style.background = '';
+        this.elements.khachHangInput.readOnly = false;
+        this.elements.diaChiInput.style.background = '';
+        this.elements.diaChiInput.readOnly = false;
+
+        // Update title based on type name
+        this.elements.khFormTitle.textContent = 'Thông tin ' + typeName.toLowerCase();
+
+        // Check if it's "KH doanh nghiệp" for MST lookup feature
+        if (typeName.toLowerCase().includes('doanh nghiệp')) {
+            this.elements.btnLookupTax.style.display = 'inline-block';
+            this.elements.lookupStatus.style.display = 'block';
+            this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
+            this.elements.khachHangInput.style.background = '#f5f5f5';
+            this.elements.khachHangInput.readOnly = true;
+            this.elements.diaChiInput.style.background = '#f5f5f5';
+            this.elements.diaChiInput.readOnly = true;
+        } else {
+            this.elements.btnLookupTax.style.display = 'none';
+            this.elements.lookupStatus.style.display = 'none';
+            this.elements.mstInput.style.background = '#f5f5f5';
+        }
+    },
+
+    /**
+     * Set customer type and optionally disable others
+     * @param {number} typeId 
+     * @param {string} typeName 
+     * @param {boolean} disableOthers 
+     */
+    setCustomerType(typeId, typeName, disableOthers = false) {
+        this.selectedCustomerTypeId = typeId;
+        this.currentKHType = typeName;
+
+        const radios = document.querySelectorAll('input[name="loai_kh"]');
+        radios.forEach(radio => {
+            const label = radio.parentElement;
+            if (radio.value == typeId) {
+                radio.checked = true;
+                radio.disabled = false;
+                label.style.opacity = '1';
+            } else if (disableOthers) {
+                radio.disabled = true;
+                label.style.opacity = '0.4';
+            }
+        });
+
+        this.changeKHType(typeId, typeName);
+    },
+
+    /**
+     * Enable all customer type radio buttons
+     */
+    enableAllCustomerTypes() {
+        const radios = document.querySelectorAll('input[name="loai_kh"]');
+        radios.forEach(radio => {
+            radio.disabled = false;
+            radio.parentElement.style.opacity = '1';
+        });
+    },
+
+    /**
+     * Setup MST lookup functionality
+     */
+    setupMSTLookup() {
+        // Click button to lookup
+        this.elements.btnLookupTax.addEventListener('click', () => this.lookupMST());
+
+        // Enter key in MST input
+        this.elements.mstInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && this.currentKHType.toLowerCase().includes('doanh nghiệp')) {
+                e.preventDefault();
+                this.lookupMST();
+            }
+        });
+
+        // Only allow numbers in MST input
+        this.elements.mstInput.addEventListener('input', function (e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    },
+
+    /**
+     * Lookup MST via VietQR API
+     */
+    async lookupMST() {
+        const mst = this.elements.mstInput.value.trim();
+
+        if (!mst) {
+            this.elements.lookupStatus.innerText = 'Vui lòng nhập MST';
+            this.elements.lookupStatus.style.color = '#e74c3c';
+            return;
+        }
+
+        this.elements.lookupStatus.innerText = 'Đang tra cứu...';
+        this.elements.lookupStatus.style.color = '#666';
+
+        try {
+            const data = await API.lookupMST(mst);
+
+            if (data.code === '00' && data.data) {
+                this.elements.khachHangInput.value = data.data.name || '';
+                this.elements.diaChiInput.value = data.data.address || '';
+                this.elements.lookupStatus.innerText = '✓ Tra cứu thành công';
+                this.elements.lookupStatus.style.color = '#27ae60';
+            } else {
+                this.elements.lookupStatus.innerText = 'Không tìm thấy thông tin MST';
+                this.elements.lookupStatus.style.color = '#e74c3c';
+                this.elements.khachHangInput.value = '';
+                this.elements.diaChiInput.value = '';
+            }
+        } catch (error) {
+            console.error('Lookup error:', error);
+            this.elements.lookupStatus.innerText = 'Lỗi kết nối API';
+            this.elements.lookupStatus.style.color = '#e74c3c';
+        }
+    },
+
+    /**
+     * Lock form
+     */
+    lock() {
+        this.elements.masterForm.classList.add('disabled');
+        this.elements.detailSection.classList.add('disabled');
+        this.elements.btnSave.disabled = true;
+        if (window.GridModule && window.GridModule.hot) {
+            window.GridModule.hot.updateSettings({ readOnly: true });
+        }
+    },
+
+    /**
+     * Unlock form
+     */
+    unlock() {
+        this.elements.masterForm.classList.remove('disabled');
+        this.elements.detailSection.classList.remove('disabled');
+        this.elements.btnSave.disabled = false;
+        if (window.GridModule && window.GridModule.hot) {
+            window.GridModule.hot.updateSettings({ readOnly: false });
+        }
+    },
+
+    /**
+     * Clear all form fields
+     */
+    clear() {
+        document.querySelectorAll('#masterForm input, #masterForm textarea').forEach(i => i.value = '');
+        this.elements.soPhieu.value = '';
+        this.elements.custCode.value = '';
+    },
+
+    /**
+     * Get form data
+     * @returns {Object}
+     */
+    getData() {
+        return {
+            psc_no: this.elements.soPhieu.value,
+            center_id: this.elements.centerSelect.value,
+            customer_type_id: this.selectedCustomerTypeId,
+            customer_name: this.elements.khachHangInput.value,
+            address: this.elements.diaChiInput.value,
+            mst: this.elements.mstInput.value,
+            email: this.elements.email.value,
+            note: this.elements.ghiChu.value
+        };
+    },
+
+    /**
+     * Set form data
+     * @param {Object} data 
+     */
+    setData(data) {
+        this.elements.custCode.value = data.cust_code || '';
+        this.elements.khachHangInput.value = data.customer_name || '';
+        this.elements.diaChiInput.value = data.address || '';
+        this.elements.mstInput.value = data.mst || '';
+        this.elements.email.value = data.email || '';
+        this.elements.ghiChu.value = data.customer_note || '';
+
+        if (data.center_id) {
+            this.elements.centerSelect.value = data.center_id;
+        }
+
+        if (data.customer_type_id) {
+            this.setCustomerType(data.customer_type_id, data.customer_type_name, true);
+        } else {
+            this.enableAllCustomerTypes();
+        }
+    }
+};
+
+// Export for use in other modules
+window.FormModule = FormModule;

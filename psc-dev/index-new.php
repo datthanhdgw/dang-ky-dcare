@@ -4,7 +4,7 @@
  * Refactored version with proper separation of concerns
  */
 
-// Require authentication - will redirect to login if not logged in
+// Require authentication
 require_once __DIR__ . '/includes/auth.php';
 requireAuth();
 

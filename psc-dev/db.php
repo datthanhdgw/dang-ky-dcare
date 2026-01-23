@@ -6,8 +6,8 @@
 
 $DB_HOST = 'localhost';
 $DB_NAME = 'b2x-dev';
-$DB_USER = 'b2x-dev';
-$DB_PASS = 'YyAWE4HeJfn36yG8';
+$DB_USER = 'root';
+$DB_PASS = 'root';
 $DB_CHARSET = 'utf8mb4';
 
 try {

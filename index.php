@@ -1,7 +1,6 @@
 <?php
 function getCenters() {
     $url = "https://dgw-icrm-prd-masterdata.isdcorp.vn/api/v1/MasterData/Common/get-list-store-2?AccountId=18d8c4cc-d073-4637-9a31-9e9253dac3ed";
-
     $headers = [
         "Accept: application/json",
         "User-Agent: Mozilla/5.0",
