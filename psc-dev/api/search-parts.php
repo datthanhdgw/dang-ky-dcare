@@ -29,7 +29,14 @@ try {
             part_name,
             retail_price,
             max_price_diff_percent,
-            is_active
+            price_last_confirmed_at,
+            is_active,
+            DATEDIFF(NOW(), price_last_confirmed_at) as days_since_confirm,
+            CASE 
+                WHEN price_last_confirmed_at IS NULL THEN 0
+                WHEN DATEDIFF(NOW(), price_last_confirmed_at) > 30 THEN 0
+                ELSE 1
+            END as price_is_valid
         FROM master_parts
         WHERE part_code LIKE ? 
            OR part_name LIKE ?
@@ -59,7 +66,10 @@ try {
             'part_name' => $part['part_name'],
             'retail_price' => (float)$part['retail_price'],
             'max_price_diff_percent' => isset($part['max_price_diff_percent']) ? (int)$part['max_price_diff_percent'] : 10,
-            'is_active' => $isActive
+            'is_active' => $isActive,
+            'price_is_valid' => isset($part['price_is_valid']) ? (int)$part['price_is_valid'] : 1,
+            'days_since_confirm' => isset($part['days_since_confirm']) ? (int)$part['days_since_confirm'] : null,
+            'price_last_confirmed_at' => $part['price_last_confirmed_at'] ?? null
         ];
     }
     

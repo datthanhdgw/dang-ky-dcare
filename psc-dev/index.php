@@ -77,6 +77,64 @@ include __DIR__ . '/views/header.php';
                 <input id="ghi_chu" placeholder="Nhập ghi chú (nếu có)" />
             </div>
         </div>
+
+        <!-- Device & Service Information -->
+        <div class="form-group-title" style="margin-top: 20px;">Thông tin thiết bị & dịch vụ</div>
+        
+        <!-- Row 3: Serial No + Model + Product Group -->
+        <div class="master-section row-divider">
+            <div class="field" style="flex: 1;">
+                <label>Serial Number / IMEI</label>
+                <input id="serial_no" placeholder="Nhập IMEI hoặc Serial Number" maxlength="50" />
+            </div>
+            <div class="field" style="flex: 1;">
+                <label>Model</label>
+                <input id="model" placeholder="VD: SM-G998B" maxlength="100" />
+            </div>
+            <div class="field" style="flex: 1;">
+                <label>Nhóm sản phẩm</label>
+                <select id="product_group">
+                    <option value="">-- Chọn nhóm --</option>
+                    <option value="HHP">HHP</option>
+                    <option value="DA~CE">DA~CE</option>
+                    <option value="AV~CE">AV~CE</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Row 4: Service Name + Status + Completed At -->
+        <div class="master-section">
+            <div class="field" style="flex: 1.5;">
+                <label>Tên dịch vụ</label>
+                <input id="service_name" placeholder="Nhập tên dịch vụ" maxlength="100" />
+            </div>
+            <div class="field">
+                <label>Trạng thái</label>
+                <select id="status">
+                    <option value="NEW">Mới tạo</option>
+                    <option value="PROCESSING">Đang xử lý</option>
+                    <option value="COMPLETED">Hoàn thành</option>
+                    <option value="DELIVERED">Đã giao</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Ngày hoàn thành</label>
+                <input id="completed_at" placeholder="Tự động khi hoàn thành" readonly style="background: #f5f5f5;" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Summary - Above Grid -->
+    <div class="receipt-summary" style="margin: 16px 0; display: flex; gap: 20px; align-items: center; justify-content: flex-end; padding: 12px; background: #f8f9fa; border-radius: 4px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: 600; margin: 0;">Tiền trên Phiếu thu:</label>
+            <input id="receipt_amount" type="text" readonly style="width: 150px; text-align: right; font-weight: bold; background: white; border: 2px solid #3498db; color: #2c3e50;" value="0" />
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: 600; margin: 0;">Chênh lệch:</label>
+            <input id="diff_amount" type="text" readonly style="width: 150px; text-align: right; font-weight: bold; background: white; border: 2px solid #e74c3c; color: #e74c3c;" value="0" />
+        </div>
     </div>
 
     <!-- Detail Grid -->

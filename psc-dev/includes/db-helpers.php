@@ -203,29 +203,96 @@ function savePSCData($pdo, $masterData, $detailsData) {
         
         // Upsert PSC master
         if ($masterId) {
-            // Update
-            $pdo->prepare("
-                UPDATE psc_masters SET
-                    center_id = ?, customer_id = ?, updated_at = NOW()
-                WHERE id = ?
-            ")->execute([
-                $masterData['center_id'],
-                $customerId,
-                $masterId
-            ]);
+            // Determine if we need to update completed_at
+            $completedAt = null;
+            if (!empty($masterData['status']) && $masterData['status'] === 'COMPLETED') {
+                // Check if completed_at already exists
+                $stmt = $pdo->prepare("SELECT completed_at FROM psc_masters WHERE id = ?");
+                $stmt->execute([$masterId]);
+                $currentData = $stmt->fetch();
+                
+                // If not set yet, set it to NOW()
+                if (empty($currentData['completed_at'])) {
+                    $completedAt = 'NOW()';
+                } else {
+                    // Keep existing value
+                    $completedAt = "'" . $currentData['completed_at'] . "'";
+                }
+            }
+            
+            // Update - build query dynamically
+            if ($completedAt === 'NOW()') {
+                $pdo->prepare("
+                    UPDATE psc_masters SET
+                        center_id = ?, customer_id = ?, 
+                        serial_no = ?, model = ?, product_group = ?, service_name = ?, status = ?,
+                        completed_at = NOW(),
+                        updated_at = NOW()
+                    WHERE id = ?
+                ")->execute([
+                    $masterData['center_id'],
+                    $customerId,
+                    $masterData['serial_no'] ?? '',
+                    $masterData['model'] ?? '',
+                    $masterData['product_group'] ?? '',
+                    $masterData['service_name'] ?? '',
+                    $masterData['status'] ?? 'NEW',
+                    $masterId
+                ]);
+            } else {
+                $pdo->prepare("
+                    UPDATE psc_masters SET
+                        center_id = ?, customer_id = ?, 
+                        serial_no = ?, model = ?, product_group = ?, service_name = ?, status = ?,
+                        updated_at = NOW()
+                    WHERE id = ?
+                ")->execute([
+                    $masterData['center_id'],
+                    $customerId,
+                    $masterData['serial_no'] ?? '',
+                    $masterData['model'] ?? '',
+                    $masterData['product_group'] ?? '',
+                    $masterData['service_name'] ?? '',
+                    $masterData['status'] ?? 'NEW',
+                    $masterId
+                ]);
+            }
             
             // Delete old parts
             $pdo->prepare("DELETE FROM psc_part WHERE psc_id = ?")->execute([$masterId]);
         } else {
-            // Insert
-            $pdo->prepare("
-                INSERT INTO psc_masters (psc_no, center_id, customer_id, created_at)
-                VALUES (?, ?, ?, NOW())
-            ")->execute([
-                $masterData['psc_no'],
-                $masterData['center_id'],
-                $customerId
-            ]);
+            // Insert - set completed_at to NOW() if status is COMPLETED
+            $shouldSetCompletedAt = (!empty($masterData['status']) && $masterData['status'] === 'COMPLETED');
+            
+            if ($shouldSetCompletedAt) {
+                $pdo->prepare("
+                    INSERT INTO psc_masters (psc_no, center_id, customer_id, serial_no, model, product_group, service_name, status, completed_at, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ")->execute([
+                    $masterData['psc_no'],
+                    $masterData['center_id'],
+                    $customerId,
+                    $masterData['serial_no'] ?? '',
+                    $masterData['model'] ?? '',
+                    $masterData['product_group'] ?? '',
+                    $masterData['service_name'] ?? '',
+                    $masterData['status'] ?? 'NEW'
+                ]);
+            } else {
+                $pdo->prepare("
+                    INSERT INTO psc_masters (psc_no, center_id, customer_id, serial_no, model, product_group, service_name, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ")->execute([
+                    $masterData['psc_no'],
+                    $masterData['center_id'],
+                    $customerId,
+                    $masterData['serial_no'] ?? '',
+                    $masterData['model'] ?? '',
+                    $masterData['product_group'] ?? '',
+                    $masterData['service_name'] ?? '',
+                    $masterData['status'] ?? 'NEW'
+                ]);
+            }
             
             $masterId = $pdo->lastInsertId();
         }

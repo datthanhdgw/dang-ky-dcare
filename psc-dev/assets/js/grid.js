@@ -1,11 +1,17 @@
 const GridModule = {
     hot: null,
     partsCache: {}, // Cache to store parts data from API
+    receiptAmountEl: null,
+    diffAmountEl: null,
 
     /**
      * Initialize the Handsontable grid
      */
     init() {
+        // Get receipt summary elements
+        this.receiptAmountEl = document.getElementById('receipt_amount');
+        this.diffAmountEl = document.getElementById('diff_amount');
+
         const moneyCol = {
             type: 'numeric',
             numericFormat: {
@@ -129,6 +135,14 @@ const GridModule = {
                                 return;
                             }
 
+                            // Check if price is expired (>30 days) - prevent selection
+                            if (partInfo.price_is_valid === 0) {
+                                const days = partInfo.days_since_confirm || 'N/A';
+                                alert(`Giá đã hết hiệu lực (${days} ngày kể từ lần confirm cuối).\n\nVui lòng liên hệ quản lý giá để cập nhật trước khi sử dụng linh kiện này.`);
+                                GridModule.hot.setDataAtCell(r, 0, oldVal || '', 'autofill');
+                                return;
+                            }
+
                             // Lấy giá trị hiện tại
                             let qty = GridModule.hot.getDataAtCell(r, 1);
                             if (!qty || qty === 0) {
@@ -158,6 +172,44 @@ const GridModule = {
                             ], 'autofill');
                         }
                     } else {
+                        // User changed other columns (quantity, price, tax, etc.)
+
+                        // Special check for unit price change (column 2)
+                        if (c === 2 && newVal !== oldVal) {
+                            const partName = GridModule.hot.getDataAtCell(r, 0);
+                            const partInfo = GridModule.partsCache[partName];
+
+                            if (partInfo && partInfo.retail_price) {
+                                const retailPrice = partInfo.retail_price;
+                                const userPrice = parseFloat(newVal) || 0;
+                                const threshold = partInfo.max_price_diff_percent || 10;
+
+                                if (userPrice > 0) {
+                                    const diff = Math.abs(retailPrice - userPrice);
+                                    const diffPercent = (diff / retailPrice) * 100;
+
+                                    if (diffPercent > threshold) {
+                                        // Highlight cell with warning
+                                        GridModule.hot.setCellMeta(r, 2, 'className', 'price-variance-warning');
+
+                                        // Show warning alert
+                                        setTimeout(() => {
+                                            alert(
+                                                `⚠️ CẢNH BÁO: Giá chênh lệch ${diffPercent.toFixed(1)}% (vượt ngưỡng ${threshold}%)\n\n` +
+                                                `Giá bảng: ${retailPrice.toLocaleString('vi-VN')} VNĐ\n` +
+                                                `Giá nhập: ${userPrice.toLocaleString('vi-VN')} VNĐ\n` +
+                                                `Chênh lệch: ${diff.toLocaleString('vi-VN')} VNĐ\n\n` +
+                                                `Cần liên hệ chị Loan để duyệt giá trước khi hoàn thành phiếu.`
+                                            );
+                                        }, 100);
+                                    } else {
+                                        // Clear warning if within threshold
+                                        GridModule.hot.setCellMeta(r, 2, 'className', '');
+                                    }
+                                }
+                            }
+                        }
+
                         // Tính toán khi thay đổi các cột khác (số lượng, đơn giá, thuế)
                         GridModule.calculateRow(r);
                     }
@@ -272,6 +324,38 @@ const GridModule = {
             [last, 5, tTax],
             [last, 6, tTT]
         ], 'summary');
+
+        // Update receipt summary fields
+        this.updateReceiptSummary(tTT);
+    },
+
+    /**
+     * Update receipt amount and difference display
+     * @param {number} totalAmount - Total "Thành tiền" from grid
+     */
+    updateReceiptSummary(totalAmount) {
+        if (!this.receiptAmountEl || !this.diffAmountEl) return;
+
+        // Format number with thousand separators
+        const formatted = new Intl.NumberFormat('vi-VN').format(totalAmount);
+        this.receiptAmountEl.value = formatted;
+
+        // For now, difference is 0 (Receipt = Total)
+        // Later this can be changed if user wants to input a different receipt amount
+        const diff = 0;
+        this.diffAmountEl.value = new Intl.NumberFormat('vi-VN').format(diff);
+
+        // Update diff color based on value
+        if (diff > 0) {
+            this.diffAmountEl.style.color = '#27ae60'; // Green for positive
+            this.diffAmountEl.style.borderColor = '#27ae60';
+        } else if (diff < 0) {
+            this.diffAmountEl.style.color = '#e74c3c'; // Red for negative
+            this.diffAmountEl.style.borderColor = '#e74c3c';
+        } else {
+            this.diffAmountEl.style.color = '#95a5a6'; // Gray for zero
+            this.diffAmountEl.style.borderColor = '#95a5a6';
+        }
     },
 
     /**

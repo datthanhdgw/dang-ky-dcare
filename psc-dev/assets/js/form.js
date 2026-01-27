@@ -21,7 +21,14 @@ const FormModule = {
         email: null,
         ghiChu: null,
         centerSelect: null,
-        customerSearch: null
+        customerSearch: null,
+        // New device & service fields
+        serialNo: null,
+        model: null,
+        productGroup: null,
+        serviceName: null,
+        status: null,
+        completedAt: null
     },
 
     /**
@@ -46,6 +53,14 @@ const FormModule = {
         this.elements.ghiChu = document.getElementById('ghi_chu');
         this.elements.centerSelect = document.getElementById('branch');
         this.elements.customerSearch = document.getElementById('customer_search');
+
+        // New device & service fields
+        this.elements.serialNo = document.getElementById('serial_no');
+        this.elements.model = document.getElementById('model');
+        this.elements.productGroup = document.getElementById('product_group');
+        this.elements.serviceName = document.getElementById('service_name');
+        this.elements.status = document.getElementById('status');
+        this.elements.completedAt = document.getElementById('completed_at');
 
         // Load customer types
         this.loadCustomerTypes();
@@ -403,6 +418,11 @@ const FormModule = {
         document.querySelectorAll('#masterForm input, #masterForm textarea').forEach(i => i.value = '');
         this.elements.soPhieu.value = '';
         this.elements.custCode.value = '';
+
+        // Reset dropdowns to default
+        if (this.elements.productGroup) this.elements.productGroup.value = '';
+        if (this.elements.serviceName) this.elements.serviceName.value = '';
+        if (this.elements.status) this.elements.status.value = 'NEW';
     },
 
     /**
@@ -419,7 +439,14 @@ const FormModule = {
             address: this.elements.diaChiInput.value,
             mst: this.elements.mstInput.value,
             email: this.elements.email.value,
-            note: this.elements.ghiChu.value
+            note: this.elements.ghiChu.value,
+            // New device & service fields
+            serial_no: this.elements.serialNo.value,
+            model: this.elements.model.value,
+            product_group: this.elements.productGroup.value,
+            service_name: this.elements.serviceName.value,
+            status: this.elements.status.value,
+            completed_at: this.elements.completedAt.value
         };
     },
 
@@ -446,6 +473,22 @@ const FormModule = {
         this.elements.mstInput.value = data.mst || '';
         this.elements.email.value = data.email || '';
         this.elements.ghiChu.value = data.customer_note || '';
+
+        // Set new device & service fields
+        this.elements.serialNo.value = data.serial_no || '';
+        this.elements.model.value = data.model || '';
+        this.elements.productGroup.value = data.product_group || '';
+        this.elements.serviceName.value = data.service_name || '';
+        this.elements.status.value = data.status || 'NEW';
+
+        // Format and display completed_at if exists
+        if (data.completed_at) {
+            // Format datetime to be more readable
+            const date = new Date(data.completed_at);
+            this.elements.completedAt.value = date.toLocaleString('vi-VN');
+        } else {
+            this.elements.completedAt.value = '';
+        }
 
         console.log('After setting, khachHangInput.value =', this.elements.khachHangInput.value);
 

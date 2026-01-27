@@ -193,6 +193,21 @@ label {
     border-top: 2px solid #ff9f43;
 }
 
+/* Price variance warning */
+.price-variance-warning {
+    background-color: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    position: relative;
+}
+
+.htCore td.price-variance-warning::after {
+    content: '⚠️';
+    position: absolute;
+    right: 4px;
+    top: 2px;
+    font-size: 14px;
+}
+
 /* ===== ACTION BAR (STICKY FOOTER) ===== */
 .action-bar {
     position: fixed;
