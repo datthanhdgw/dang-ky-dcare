@@ -423,6 +423,7 @@ const GridModule = {
         const data = this.getData();
         const validTaxValues = [0, 8, 10];
         let validRowCount = 0;
+        let hasPriceWarning = false;
 
         // Clear previous error highlights
         this.clearValidationErrors();
@@ -470,6 +471,13 @@ const GridModule = {
                 errors.push(`Dòng ${row + 1}: Thuế GTGT phải là 0, 8 hoặc 10`);
                 this.hot.setCellMeta(row, 4, 'className', 'htInvalid');
             }
+
+            // Check for price variance warning
+            const cellMeta = this.hot.getCellMeta(row, 2);
+            if (cellMeta && cellMeta.className && cellMeta.className.includes('price-variance-warning')) {
+                hasPriceWarning = true;
+                errors.push(`Dòng ${row + 1}: Giá chênh lệch vượt ngưỡng cho phép - cần được duyệt trước khi lưu`);
+            }
         }
 
         // Check if at least one part exists
@@ -481,20 +489,30 @@ const GridModule = {
 
         return {
             valid: errors.length === 0,
-            errors: errors
+            errors: errors,
+            hasPriceWarning: hasPriceWarning
         };
     },
 
     /**
-     * Clear validation error highlights
+     * Clear validation error highlights (but preserve price warnings)
      */
     clearValidationErrors() {
         const rowCount = this.hot.countRows() - 1; // Exclude summary row
         for (let row = 0; row < rowCount; row++) {
-            this.hot.setCellMeta(row, 0, 'className', '');
-            this.hot.setCellMeta(row, 1, 'className', '');
-            this.hot.setCellMeta(row, 2, 'className', '');
-            this.hot.setCellMeta(row, 4, 'className', '');
+            // Clear htInvalid but preserve price-variance-warning
+            const cols = [0, 1, 2, 4];
+            cols.forEach(col => {
+                const meta = this.hot.getCellMeta(row, col);
+                if (meta && meta.className) {
+                    // Only keep price-variance-warning, remove htInvalid
+                    if (meta.className.includes('price-variance-warning')) {
+                        this.hot.setCellMeta(row, col, 'className', 'price-variance-warning');
+                    } else {
+                        this.hot.setCellMeta(row, col, 'className', '');
+                    }
+                }
+            });
         }
     }
 };
