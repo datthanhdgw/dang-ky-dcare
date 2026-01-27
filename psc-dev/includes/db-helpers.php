@@ -48,7 +48,7 @@ function getPSCData($pdo, $pscNo) {
     }
 
     // Load parts
-    $stmt = $pdo->prepare("SELECT * FROM pcs_part WHERE psc_id = ? ORDER BY id");
+    $stmt = $pdo->prepare("SELECT * FROM psc_part WHERE psc_id = ? ORDER BY id");
     $stmt->execute([$master['id']]);
 
     $details = [];
@@ -165,7 +165,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
             ]);
             
             // Delete old parts
-            $pdo->prepare("DELETE FROM pcs_part WHERE psc_id = ?")->execute([$masterId]);
+            $pdo->prepare("DELETE FROM psc_part WHERE psc_id = ?")->execute([$masterId]);
         } else {
             // Insert
             $pdo->prepare("
@@ -182,7 +182,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
         
         // Insert parts
         $stmtPart = $pdo->prepare("
-            INSERT INTO pcs_part 
+            INSERT INTO psc_part 
             (psc_id, part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, receipt_amt, diff_amt, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");

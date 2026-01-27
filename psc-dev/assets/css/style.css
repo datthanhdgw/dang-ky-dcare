@@ -9,10 +9,13 @@ body {
     max-width: 1400px;
     margin: auto;
     padding: 10px;
-    padding-bottom: 70px; /* Space for sticky footer */
+    padding-bottom: 70px;
+    /* Space for sticky footer */
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
     padding: 6px;
     border-radius: 5px;
     border: 1px solid #ddd;
@@ -278,7 +281,7 @@ label {
 .header {
     background: #fff;
     padding: 10px 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
@@ -314,4 +317,72 @@ label {
 
 .btn-logout:hover {
     background: #c0392b;
+}
+
+/* ===== SELECT2 CUSTOM STYLES ===== */
+.select2-container--default .select2-selection--single {
+    height: 34px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 32px;
+    padding-left: 8px;
+    color: #333;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #999;
+}
+
+.select2-dropdown {
+    border: 1px solid #ff9f43;
+    border-radius: 5px;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #ff9f43;
+    color: white;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 1px solid #ff9f43;
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field:focus {
+    outline: none;
+    border-color: #ff8a1a;
+}
+
+.select2-results__option {
+    padding: 8px 10px;
+}
+
+.select2-container--default .select2-results__option[aria-selected=true] {
+    background-color: #fff3e0;
+}
+
+/* Customer option template in dropdown */
+.customer-option {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.customer-option .customer-code {
+    font-weight: 600;
+    color: #ff9f43;
+    font-size: 13px;
+}
+
+.customer-option .customer-name {
+    color: #666;
+    font-size: 12px;
 }

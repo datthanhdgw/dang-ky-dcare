@@ -20,7 +20,8 @@ const FormModule = {
         custCode: null,
         email: null,
         ghiChu: null,
-        centerSelect: null
+        centerSelect: null,
+        customerSearch: null
     },
 
     /**
@@ -44,12 +45,16 @@ const FormModule = {
         this.elements.email = document.getElementById('email');
         this.elements.ghiChu = document.getElementById('ghi_chu');
         this.elements.centerSelect = document.getElementById('branch');
+        this.elements.customerSearch = document.getElementById('customer_search');
 
         // Load customer types
         this.loadCustomerTypes();
 
         // Setup MST lookup
         this.setupMSTLookup();
+
+        // Setup Select2 for customer search
+        this.setupCustomerSearch();
 
         // Lock form initially
         this.lock();
@@ -104,6 +109,20 @@ const FormModule = {
         this.selectedCustomerTypeId = typeId;
         this.currentKHType = typeName;
 
+        // Reset form data when changing customer type
+        this.elements.custCode.value = '';
+        this.elements.khachHangInput.value = '';
+        this.elements.diaChiInput.value = '';
+        this.elements.mstInput.value = '';
+        this.elements.email.value = '';
+        this.elements.ghiChu.value = '';
+        this.elements.lookupStatus.innerText = '';
+
+        // Reset Select2 customer search
+        if (this.elements.customerSearch && $(this.elements.customerSearch).data('select2')) {
+            $(this.elements.customerSearch).val(null).trigger('change');
+        }
+
         // Reset fields styles
         this.elements.mstInput.style.background = '';
         this.elements.mstInput.placeholder = '';
@@ -112,10 +131,7 @@ const FormModule = {
         this.elements.khachHangInput.readOnly = false;
         this.elements.diaChiInput.style.background = '';
         this.elements.diaChiInput.readOnly = false;
-
-        // Update title based on type name
         this.elements.khFormTitle.textContent = 'Thông tin ' + typeName.toLowerCase();
-
         // Check if it's "KH doanh nghiệp" for MST lookup feature
         if (typeName.toLowerCase().includes('doanh nghiệp')) {
             this.elements.btnLookupTax.style.display = 'inline-block';
@@ -187,6 +203,94 @@ const FormModule = {
         // Only allow numbers in MST input
         this.elements.mstInput.addEventListener('input', function (e) {
             this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    },
+
+    /**
+     * Setup Select2 for customer search with AJAX
+     */
+    setupCustomerSearch() {
+        const self = this;
+
+        // Initialize Select2 with AJAX
+        $(this.elements.customerSearch).select2({
+            placeholder: 'Nhập mã hoặc tên để tìm...',
+            allowClear: true,
+            minimumInputLength: 1,
+            ajax: {
+                url: 'api/search-customers.php',
+                dataType: 'json',
+                delay: 300,
+                data: function (params) {
+                    return {
+                        term: params.term,
+                        page: params.page || 1
+                    };
+                },
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    return {
+                        results: data.results,
+                        pagination: {
+                            more: data.pagination.more
+                        }
+                    };
+                },
+                cache: true
+            },
+            templateResult: function (data) {
+                if (data.loading) return data.text;
+                return $('<div class="customer-option">' +
+                    '<span class="customer-code">' + (data.customer_id || '') + '</span>' +
+                    '<span class="customer-name">' + (data.customer_name || '') + '</span>' +
+                    '</div>');
+            },
+            templateSelection: function (data) {
+                if (!data.customer_name) return data.text;
+                return data.customer_id + ' - ' + data.customer_name;
+            },
+            language: {
+                inputTooShort: function () {
+                    return 'Nhập ít nhất 1 ký tự...';
+                },
+                noResults: function () {
+                    return 'Không tìm thấy khách hàng';
+                },
+                searching: function () {
+                    return 'Đang tìm...';
+                }
+            }
+        });
+
+        // Handle customer selection
+        $(this.elements.customerSearch).on('select2:select', function (e) {
+            const data = e.params.data;
+
+            // Fill customer data into form fields
+            self.elements.custCode.value = data.customer_id || '';
+            self.elements.khachHangInput.value = data.customer_name || '';
+            self.elements.diaChiInput.value = data.address || '';
+            self.elements.mstInput.value = data.mst || '';
+            self.elements.email.value = data.email || '';
+
+            // Set fields as readonly when customer is selected (if it's "KH công nợ")
+            if (self.currentKHType.toLowerCase().includes('công nợ')) {
+                self.elements.khachHangInput.style.background = '#f5f5f5';
+                self.elements.khachHangInput.readOnly = true;
+                self.elements.diaChiInput.style.background = '#f5f5f5';
+                self.elements.diaChiInput.readOnly = true;
+            }
+        });
+
+        // Handle clear
+        $(this.elements.customerSearch).on('select2:clear', function () {
+            self.elements.custCode.value = '';
+            self.elements.khachHangInput.value = '';
+            self.elements.diaChiInput.value = '';
+            self.elements.khachHangInput.style.background = '';
+            self.elements.khachHangInput.readOnly = false;
+            self.elements.diaChiInput.style.background = '';
+            self.elements.diaChiInput.readOnly = false;
         });
     },
 

@@ -1,8 +1,3 @@
-/**
- * Main Application Module
- * Orchestrates the PSC application
- */
-
 const App = {
     /**
      * Initialize application
@@ -11,8 +6,6 @@ const App = {
         // Initialize modules
         GridModule.init();
         FormModule.init();
-
-        // Load centers
         await this.loadCenters();
 
         // Setup event listeners
@@ -184,6 +177,13 @@ const App = {
      * Save PSC data
      */
     async savePSC() {
+        // Validate grid data before saving
+        const validation = GridModule.validate();
+        if (!validation.valid) {
+            alert('Dữ liệu không hợp lệ:\n\n' + validation.errors.join('\n'));
+            return;
+        }
+
         const masterData = FormModule.getData();
         const detailsData = GridModule.getData();
 

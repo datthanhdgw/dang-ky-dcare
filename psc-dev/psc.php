@@ -340,7 +340,7 @@ const hot=new Handsontable(document.getElementById('hot'),{
     colHeaders:[
         'Linh kiện','Số lượng','Đơn giá bán lẻ','Doanh thu',
         'Thuế GTGT (%)','Thuế GTGT','Thành tiền',
-        'Tiền trên Phiếu thu','Chênh lệch','Ghi chú'
+        // 'Tiền trên Phiếu thu','Chênh lệch','Ghi chú'
     ],
     
 columns: [
@@ -354,7 +354,7 @@ columns: [
     
         { ...moneyCol, readOnly:true, width:130 }, // Thuế GTGT
         { ...moneyCol, readOnly:true, width:140 }, // Thành tiền
-        { ...moneyCol, width:160 },      // Tiền trên Phiếu thu
+        // { ...moneyCol, width:160 },      // Tiền trên Phiếu thu
         { ...moneyCol, readOnly:true, width:120 }, // Chênh lệch
     
         { type:'text', width:200 }       // Ghi chú

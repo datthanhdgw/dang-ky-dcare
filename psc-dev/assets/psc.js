@@ -1,7 +1,3 @@
-/* =========================
- *  PSC – Handsontable logic
- * ========================= */
-
 let linhKienList = [];
 let linhKienMap  = {};
 

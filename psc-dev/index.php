@@ -1,10 +1,4 @@
 <?php
-/**
- * PSC Management System - Main Page
- * Refactored version with proper separation of concerns
- */
-
-// Require authentication - will redirect to login if not logged in
 require_once __DIR__ . '/includes/auth.php';
 requireAuth();
 
@@ -44,36 +38,40 @@ include __DIR__ . '/views/header.php';
         
         <!-- Customer Information -->
         <div id="kh-form-title" class="form-group-title">Thông tin khách hàng công nợ</div>
+        
+        <!-- Row 1: Search + Address -->
         <div class="master-section row-divider">
-            <div class="field">
-                <label>Mã KH</label>
-                <input id="cust_code" style="width: 120px;" readonly />
+            <div class="field" style="flex: 2; min-width: 300px;">
+                <label>🔍 Tìm khách hàng (Mã KH hoặc Tên)</label>
+                <select id="customer_search" style="width: 100%;"></select>
             </div>
-            <div class="field grow">
-                <label>Tên khách hàng</label>
-                <input id="khach_hang" />
-            </div>
-            <div class="field grow">
+            <div class="field" style="flex: 2;">
                 <label>Địa chỉ</label>
-                <input id="dia_chi" />
+                <input id="dia_chi" placeholder="Nhập hoặc tự động điền khi chọn KH" />
             </div>
+        </div>
+
+        <!-- Hidden fields for data storage -->
+        <input type="hidden" id="cust_code" />
+        <input type="hidden" id="khach_hang" />
+
+        <!-- Row 2: MST + Email + Notes -->
+        <div class="master-section">
             <div class="field" id="mst-wrapper" style="position: relative;">
                 <label>Mã số thuế</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <input id="mst" inputmode="numeric" maxlength="15" style="flex: 1;" />
+                    <input id="mst" inputmode="numeric" maxlength="15" style="flex: 1;" placeholder="Nhập MST" />
                     <button type="button" class="btn-lookup" id="btn-lookup-tax" style="display: none;">🔍 Tra cứu</button>
                 </div>
                 <div class="lookup-status" id="lookup-status" style="display: none;"></div>
             </div>
-        </div>
-        <div class="master-section">
             <div class="field">
                 <label>Email</label>
-                <input id="email" />
+                <input id="email" placeholder="Nhập email" />
             </div>
             <div class="field grow">
                 <label>Ghi chú</label>
-                <input id="ghi_chu" />
+                <input id="ghi_chu" placeholder="Nhập ghi chú (nếu có)" />
             </div>
         </div>
     </div>
