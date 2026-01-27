@@ -227,6 +227,13 @@ const GridModule = {
     loadData(data) {
         this.hot.loadData(data);
         this.hot.alter('insert_row_below', this.hot.countRows() - 1);
+
+        // Tính toán lại tất cả các dòng sau khi load
+        const rowCount = this.hot.countRows() - 1; // Trừ dòng tổng cộng
+        for (let i = 0; i < rowCount; i++) {
+            this.calculateRow(i);
+        }
+
         this.updateSummary();
     },
 

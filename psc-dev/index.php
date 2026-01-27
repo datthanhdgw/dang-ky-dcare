@@ -39,11 +39,15 @@ include __DIR__ . '/views/header.php';
         <!-- Customer Information -->
         <div id="kh-form-title" class="form-group-title">Thông tin khách hàng công nợ</div>
         
-        <!-- Row 1: Search + Address -->
+        <!-- Row 1: Search + Customer Name + Address -->
         <div class="master-section row-divider">
-            <div class="field" style="flex: 2; min-width: 300px;">
+            <div class="field" style="flex: 1.5; min-width: 250px;">
                 <label>🔍 Tìm khách hàng (Mã KH hoặc Tên)</label>
                 <select id="customer_search" style="width: 100%;"></select>
+            </div>
+            <div class="field" style="flex: 1.5;">
+                <label>Tên khách hàng</label>
+                <input id="khach_hang" placeholder="Nhập hoặc tự động điền khi chọn KH" />
             </div>
             <div class="field" style="flex: 2;">
                 <label>Địa chỉ</label>
@@ -53,7 +57,6 @@ include __DIR__ . '/views/header.php';
 
         <!-- Hidden fields for data storage -->
         <input type="hidden" id="cust_code" />
-        <input type="hidden" id="khach_hang" />
 
         <!-- Row 2: MST + Email + Notes -->
         <div class="master-section">

@@ -80,29 +80,33 @@ function getPSCData($pdo, $pscNo) {
  * @return int Customer ID
  */
 function upsertCustomer($pdo, $customerId, $data) {
-    // Handle email - use NULL if empty to avoid unique constraint issues
-    $emailValue = !empty($data['email']) ? $data['email'] : null;
+    // Handle email - check if provided
+    $emailValue = !empty($data['email']) ? $data['email'] : '';
+    $skipEmailUpdate = false;
     
     // Check if email already exists for another customer
-    if ($emailValue && $customerId) {
+    if (!empty($emailValue) && $customerId) {
         $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ? AND id != ?");
         $stmt->execute([$emailValue, $customerId]);
         if ($stmt->fetch()) {
-            // Email exists for another customer, don't update email
-            $emailValue = null;
+            // Email exists for another customer, skip email update
+            $skipEmailUpdate = true;
         }
-    } elseif ($emailValue && !$customerId) {
+    } elseif (!empty($emailValue) && !$customerId) {
         $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ?");
         $stmt->execute([$emailValue]);
         if ($stmt->fetch()) {
-            // Email exists, don't use it for new customer
-            $emailValue = null;
+            // Email exists, generate unique placeholder for new customer
+            $emailValue = 'no-email-' . uniqid() . '@placeholder.local';
         }
+    } elseif (empty($emailValue) && !$customerId) {
+        // New customer without email - generate unique placeholder
+        $emailValue = 'no-email-' . uniqid() . '@placeholder.local';
     }
     
     if ($customerId) {
-        // Update existing customer - keep old email if new email is null
-        if ($emailValue === null) {
+        // Update existing customer - skip email if it would cause duplicate
+        if ($skipEmailUpdate || empty($emailValue)) {
             // Don't update email field
             $pdo->prepare("
                 UPDATE customer SET 

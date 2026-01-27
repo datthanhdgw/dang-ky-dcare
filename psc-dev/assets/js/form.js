@@ -106,6 +106,7 @@ const FormModule = {
      * @param {string} typeName 
      */
     changeKHType(typeId, typeName) {
+        typeName = typeName || 'khách hàng';
         this.selectedCustomerTypeId = typeId;
         this.currentKHType = typeName;
 
@@ -153,8 +154,9 @@ const FormModule = {
      * @param {number} typeId 
      * @param {string} typeName 
      * @param {boolean} disableOthers 
+     * @param {boolean} skipReset - If true, don't reset form fields (used when loading existing data)
      */
-    setCustomerType(typeId, typeName, disableOthers = false) {
+    setCustomerType(typeId, typeName, disableOthers = false, skipReset = false) {
         this.selectedCustomerTypeId = typeId;
         this.currentKHType = typeName;
 
@@ -171,7 +173,46 @@ const FormModule = {
             }
         });
 
-        this.changeKHType(typeId, typeName);
+        if (!skipReset) {
+            this.changeKHType(typeId, typeName);
+        } else {
+            // Just update styles without resetting form
+            this.applyCustomerTypeStyles(typeName);
+        }
+    },
+
+    /**
+     * Apply styles based on customer type without resetting form
+     * @param {string} typeName 
+     */
+    applyCustomerTypeStyles(typeName) {
+        // Handle null/undefined typeName
+        typeName = typeName || 'khách hàng';
+
+        this.elements.khFormTitle.textContent = 'Thông tin ' + typeName.toLowerCase();
+
+        // Reset field styles first
+        this.elements.mstInput.style.background = '';
+        this.elements.mstInput.placeholder = '';
+        this.elements.mstInput.readOnly = false;
+        this.elements.khachHangInput.style.background = '';
+        this.elements.khachHangInput.readOnly = false;
+        this.elements.diaChiInput.style.background = '';
+        this.elements.diaChiInput.readOnly = false;
+
+        if (typeName.toLowerCase().includes('doanh nghiệp')) {
+            this.elements.btnLookupTax.style.display = 'inline-block';
+            this.elements.lookupStatus.style.display = 'block';
+            this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
+            this.elements.khachHangInput.style.background = '#f5f5f5';
+            this.elements.khachHangInput.readOnly = true;
+            this.elements.diaChiInput.style.background = '#f5f5f5';
+            this.elements.diaChiInput.readOnly = true;
+        } else {
+            this.elements.btnLookupTax.style.display = 'none';
+            this.elements.lookupStatus.style.display = 'none';
+            this.elements.mstInput.style.background = '#f5f5f5';
+        }
     },
 
     /**
@@ -387,26 +428,53 @@ const FormModule = {
      * @param {Object} data 
      */
     setData(data) {
+        console.log('setData received:', data);
+
         // Set center first
         if (data.center_id) {
             this.elements.centerSelect.value = data.center_id;
         }
 
-        // Set customer type BEFORE setting form values
-        // (because setCustomerType calls changeKHType which resets form fields)
-        if (data.customer_type_id) {
-            this.setCustomerType(data.customer_type_id, data.customer_type_name, true);
-        } else {
-            this.enableAllCustomerTypes();
-        }
+        // Set form values FIRST
+        console.log('Setting form values:');
+        console.log('- khachHangInput element:', this.elements.khachHangInput);
+        console.log('- customer_name value:', data.customer_name);
 
-        // NOW set form values after customer type is set
         this.elements.custCode.value = data.cust_code || '';
         this.elements.khachHangInput.value = data.customer_name || '';
         this.elements.diaChiInput.value = data.address || '';
         this.elements.mstInput.value = data.mst || '';
         this.elements.email.value = data.email || '';
         this.elements.ghiChu.value = data.customer_note || '';
+
+        console.log('After setting, khachHangInput.value =', this.elements.khachHangInput.value);
+
+        // Pre-populate Select2 with existing customer data
+        if (data.cust_code && data.customer_name) {
+            const $select = $(this.elements.customerSearch);
+            // Create a new option with the customer data
+            const option = new Option(
+                data.cust_code + ' - ' + data.customer_name,
+                data.customer_id || data.cust_code,
+                true, // default selected
+                true  // currently selected
+            );
+            // Add extra data for template
+            option.customer_id = data.cust_code;
+            option.customer_name = data.customer_name;
+            option.address = data.address || '';
+            option.mst = data.mst || '';
+            option.email = data.email || '';
+
+            $select.append(option).trigger('change');
+        }
+
+        // Set customer type with skipReset=true to keep form values
+        if (data.customer_type_id) {
+            this.setCustomerType(data.customer_type_id, data.customer_type_name, true, true);
+        } else {
+            this.enableAllCustomerTypes();
+        }
     }
 };
 
