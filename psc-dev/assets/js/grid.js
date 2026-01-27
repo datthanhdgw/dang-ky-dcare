@@ -129,32 +129,33 @@ const GridModule = {
                                 return;
                             }
 
-                            // Lấy hoặc đặt số lượng
+                            // Lấy giá trị hiện tại
                             let qty = GridModule.hot.getDataAtCell(r, 1);
                             if (!qty || qty === 0) {
                                 qty = 1;
-                                GridModule.hot.setDataAtCell(r, 1, qty, 'autofill');
                             }
 
-                            // Đặt đơn giá bán lẻ
                             const price = partInfo.retail_price || 0;
-                            GridModule.hot.setDataAtCell(r, 2, price, 'autofill');
 
-                            // Lấy hoặc đặt thuế suất
                             let taxPct = GridModule.hot.getDataAtCell(r, 4);
                             if (!taxPct && taxPct !== 0) {
                                 taxPct = partInfo.max_price_diff_percent !== undefined ? partInfo.max_price_diff_percent : 10;
-                                GridModule.hot.setDataAtCell(r, 4, taxPct, 'autofill');
                             }
 
-                            // Tính toán trực tiếp các giá trị
+                            // Tính toán các giá trị
                             const dt = qty * price;
                             const th = Math.round(dt * taxPct / 100 / 5) * 5;
                             const tt = dt + th;
 
-                            GridModule.hot.setDataAtCell(r, 3, dt, 'calc');
-                            GridModule.hot.setDataAtCell(r, 5, th, 'calc');
-                            GridModule.hot.setDataAtCell(r, 6, tt, 'calc');
+                            // Batch tất cả changes cùng lúc
+                            GridModule.hot.setDataAtCell([
+                                [r, 1, qty],
+                                [r, 2, price],
+                                [r, 3, dt],
+                                [r, 4, taxPct],
+                                [r, 5, th],
+                                [r, 6, tt]
+                            ], 'autofill');
                         }
                     } else {
                         // Tính toán khi thay đổi các cột khác (số lượng, đơn giá, thuế)
@@ -163,7 +164,7 @@ const GridModule = {
                 });
 
                 // Delay updateSummary để đảm bảo tất cả giá trị đã được commit
-                setTimeout(() => GridModule.updateSummary(), 0);
+                setTimeout(() => GridModule.updateSummary(), 50);
             },
 
             afterSelection: function (r) {
@@ -215,36 +216,62 @@ const GridModule = {
     },
 
     /**
+     * Calculate totals for a specific row - Direct source data modification
+     * @param {number} row - Row index
+     */
+    calculateRowDirect(row) {
+        const last = this.hot.countRows() - 1;
+        if (row >= last) return;
+
+        const sourceData = this.hot.getSourceData();
+        const rowData = sourceData[row];
+        if (!rowData) return;
+
+        let sl = +rowData[1] || 0;
+        let dg = +rowData[2] || 0;
+        let tax = +rowData[4] || 0;
+
+        let dt = sl * dg;
+        let th = Math.round(dt * tax / 100 / 5) * 5; // Làm tròn đến bội số 5
+        let tt = dt + th;
+
+        rowData[3] = dt;
+        rowData[5] = th;
+        rowData[6] = tt;
+
+        this.hot.render();
+    },
+
+    /**
      * Update summary row with totals
      */
     updateSummary() {
-        const sourceData = this.hot.getSourceData();
-        const rowCount = this.hot.countRows();
-        const last = rowCount - 1;
+        const data = this.hot.getData();
+        const last = data.length - 1;
         let tDT = 0, tTax = 0, tTT = 0;
 
-        // Dùng getSourceData để lấy giá trị từ source data
-        for (let i = 0; i < sourceData.length; i++) {
-            const row = sourceData[i];
-            if (!row || !row[0]) continue; // Bỏ qua dòng trống hoặc dòng TỔNG CỘNG
+        // Dùng getData để lấy giá trị hiện tại
+        for (let i = 0; i < last; i++) {
+            const row = data[i];
+            if (!row || !row[0] || row[0] === 'TỔNG CỘNG') continue;
 
             const dt = +row[3] || 0;
             const tax = +row[5] || 0;
             const tt = +row[6] || 0;
-
-            console.log(`Row ${i}: DT=${dt}, Tax=${tax}, TT=${tt}`);
 
             tDT += dt;
             tTax += tax;
             tTT += tt;
         }
 
-        console.log(`TỔNG: DT=${tDT}, Tax=${tTax}, TT=${tTT}`);
+        console.log('updateSummary:', { tDT, tTax, tTT });
 
-        this.hot.setDataAtCell(last, 0, 'TỔNG CỘNG', 'summary');
-        this.hot.setDataAtCell(last, 3, tDT, 'summary');
-        this.hot.setDataAtCell(last, 5, tTax, 'summary');
-        this.hot.setDataAtCell(last, 6, tTT, 'summary');
+        this.hot.setDataAtCell([
+            [last, 0, 'TỔNG CỘNG'],
+            [last, 3, tDT],
+            [last, 5, tTax],
+            [last, 6, tTT]
+        ], 'summary');
     },
 
     /**
@@ -256,11 +283,25 @@ const GridModule = {
         this.hot.alter('insert_row_below', this.hot.countRows() - 1);
 
         // Tính toán lại tất cả các dòng sau khi load
-        const rowCount = this.hot.countRows() - 1; // Trừ dòng tổng cộng
-        for (let i = 0; i < rowCount; i++) {
-            this.calculateRow(i);
+        const sourceData = this.hot.getSourceData();
+        for (let i = 0; i < sourceData.length; i++) {
+            const rowData = sourceData[i];
+            if (!rowData || !rowData[0]) continue;
+
+            let sl = +rowData[1] || 0;
+            let dg = +rowData[2] || 0;
+            let tax = +rowData[4] || 0;
+
+            let dt = sl * dg;
+            let th = Math.round(dt * tax / 100 / 5) * 5;
+            let tt = dt + th;
+
+            rowData[3] = dt;
+            rowData[5] = th;
+            rowData[6] = tt;
         }
 
+        this.hot.render();
         this.updateSummary();
     },
 
