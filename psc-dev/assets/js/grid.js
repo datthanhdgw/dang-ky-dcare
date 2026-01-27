@@ -69,7 +69,7 @@ const GridModule = {
                             td.style.textDecoration = 'line-through';
                         }
                     }
-                },      // Linh kiện
+                },
                 { type: 'numeric', width: 60 },    // Số lượng
                 { ...moneyCol, width: 130 },       // Đơn giá bán lẻ
                 { ...moneyCol, readOnly: true, width: 130 }, // Doanh thu
@@ -120,7 +120,7 @@ const GridModule = {
                     // If part column changed (column 0), auto-fill other columns
                     if (c === 0 && newVal && newVal !== oldVal && src !== 'autofill') {
                         const partInfo = GridModule.partsCache[newVal];
-                        console.log(partInfo, "partInfo for", newVal);
+                        // console.log(partInfo, "partInfo for", newVal);
                         if (partInfo) {
                             // Check if part is inactive - prevent selection
                             if (partInfo.is_active === 0) {
@@ -270,17 +270,30 @@ const GridModule = {
         for (let row = 0; row < data.length; row++) {
             const rowData = data[row];
             const partName = rowData[0];
-
-            // Skip empty rows
-            if (!partName || partName.trim() === '') continue;
-
-            validRowCount++;
-
             const qty = rowData[1];
             const price = rowData[2];
             const tax = rowData[4];
+            const note = rowData[7];
 
-            // Validate quantity - must be positive number
+            // Check if row has any data
+            const hasAnyData = (qty !== null && qty !== '' && qty !== 0) ||
+                (price !== null && price !== '' && price !== 0) ||
+                (tax !== null && tax !== '' && tax !== 0) ||
+                (note !== null && note !== '' && String(note).trim() !== '');
+
+            // Skip completely empty rows (no part name and no other data)
+            if ((!partName || partName.trim() === '') && !hasAnyData) continue;
+
+            // If row has data but no part name - this is an error
+            if ((!partName || partName.trim() === '') && hasAnyData) {
+                errors.push(`Dòng ${row + 1}: Có dữ liệu nhưng thiếu tên linh kiện`);
+                this.hot.setCellMeta(row, 0, 'className', 'htInvalid');
+                continue; // Don't validate other fields if missing part name
+            }
+
+            validRowCount++;
+
+            // Validate quantity - must be positive integer
             if (qty === null || qty === '' || isNaN(qty) || !Number.isInteger(Number(qty)) || Number(qty) <= 0) {
                 errors.push(`Dòng ${row + 1}: Số lượng phải là số nguyên dương`);
                 this.hot.setCellMeta(row, 1, 'className', 'htInvalid');
@@ -318,6 +331,7 @@ const GridModule = {
     clearValidationErrors() {
         const rowCount = this.hot.countRows() - 1; // Exclude summary row
         for (let row = 0; row < rowCount; row++) {
+            this.hot.setCellMeta(row, 0, 'className', '');
             this.hot.setCellMeta(row, 1, 'className', '');
             this.hot.setCellMeta(row, 2, 'className', '');
             this.hot.setCellMeta(row, 4, 'className', '');

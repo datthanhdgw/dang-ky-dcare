@@ -53,6 +53,7 @@ function getPSCData($pdo, $pscNo) {
 
     $details = [];
     while ($row = $stmt->fetch()) {
+        // Grid has 8 columns: part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, note
         $details[] = [
             $row['part_name'],
             $row['quantity'],
@@ -61,9 +62,7 @@ function getPSCData($pdo, $pscNo) {
             $row['vat_pct'],
             $row['vat_amt'],
             $row['total_amt'],
-            $row['receipt_amt'],
-            $row['diff_amt'],
-            $row['note']
+            $row['note']  // index 7
         ];
     }
 
@@ -194,6 +193,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
                 continue;
             }
             
+            // Grid has 8 columns (index 0-7): part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, note
             $stmtPart->execute([
                 $masterId,
                 $row[0],                     // part_name
@@ -203,9 +203,9 @@ function savePSCData($pdo, $masterData, $detailsData) {
                 (int)($row[4] ?? 0),         // vat_pct
                 (float)($row[5] ?? 0),       // vat_amt
                 (float)($row[6] ?? 0),       // total_amt
-                (float)($row[7] ?? 0),       // receipt_amt
-                (float)($row[8] ?? 0),       // diff_amt
-                $row[9] ?? ''                // note
+                0,                           // receipt_amt (not in grid)
+                0,                           // diff_amt (not in grid)
+                $row[7] ?? ''                // note (index 7 in grid)
             ]);
             
             $insertedRows++;
