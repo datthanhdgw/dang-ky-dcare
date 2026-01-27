@@ -146,8 +146,11 @@ const App = {
         FormModule.enableAllCustomerTypes();
         if (FormModule.customerTypesData.length > 0) {
             const firstType = FormModule.customerTypesData[0];
-            document.querySelector(`input[name="loai_kh"][value="${firstType.id}"]`).checked = true;
-            FormModule.changeKHType(firstType.id, firstType.type_name);
+            const radio = document.querySelector(`input[name="loai_kh"][value="${firstType.id}"]`);
+            if (radio) {
+                radio.checked = true;
+                FormModule.changeKHType(firstType.id, firstType.type_name);
+            }
         }
     },
 

@@ -80,28 +80,59 @@ function getPSCData($pdo, $pscNo) {
  * @return int Customer ID
  */
 function upsertCustomer($pdo, $customerId, $data) {
+    // Handle email - use NULL if empty to avoid unique constraint issues
+    $emailValue = !empty($data['email']) ? $data['email'] : null;
+    
+    // Check if email already exists for another customer
+    if ($emailValue && $customerId) {
+        $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ? AND id != ?");
+        $stmt->execute([$emailValue, $customerId]);
+        if ($stmt->fetch()) {
+            // Email exists for another customer, don't update email
+            $emailValue = null;
+        }
+    } elseif ($emailValue && !$customerId) {
+        $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ?");
+        $stmt->execute([$emailValue]);
+        if ($stmt->fetch()) {
+            // Email exists, don't use it for new customer
+            $emailValue = null;
+        }
+    }
+    
     if ($customerId) {
-        // Update existing customer
-        $pdo->prepare("
-            UPDATE customer SET 
-                customer_name = ?, address = ?, mst = ?, email = ?, note = ?, updated_at = NOW()
-            WHERE id = ?
-        ")->execute([
-            $data['customer_name'],
-            $data['address'],
-            $data['mst'] ?? '',
-            $data['email'] ?? '',
-            $data['note'] ?? '',
-            $customerId
-        ]);
+        // Update existing customer - keep old email if new email is null
+        if ($emailValue === null) {
+            // Don't update email field
+            $pdo->prepare("
+                UPDATE customer SET 
+                    customer_name = ?, address = ?, mst = ?, note = ?, updated_at = NOW()
+                WHERE id = ?
+            ")->execute([
+                $data['customer_name'],
+                $data['address'],
+                $data['mst'] ?? '',
+                $data['note'] ?? '',
+                $customerId
+            ]);
+        } else {
+            $pdo->prepare("
+                UPDATE customer SET 
+                    customer_name = ?, address = ?, mst = ?, email = ?, note = ?, updated_at = NOW()
+                WHERE id = ?
+            ")->execute([
+                $data['customer_name'],
+                $data['address'],
+                $data['mst'] ?? '',
+                $emailValue,
+                $data['note'] ?? '',
+                $customerId
+            ]);
+        }
         
         return $customerId;
     } else {
         // Create new customer
-        $emailValue = !empty($data['email']) 
-            ? $data['email'] 
-            : 'no-email-' . uniqid() . '@placeholder.local';
-            
         $pdo->prepare("
             INSERT INTO customer (customer_id, customer_name, address, mst, email, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?, NOW())
