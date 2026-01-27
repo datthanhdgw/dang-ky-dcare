@@ -19,7 +19,11 @@ $userInfo = getUserInfo();
 
 <!-- Header Bar -->
 <div class="header">
-    <h1>📋 PSC</h1>
+    <h1><a href="index.php" class="logo-link">📋 PSC</a></h1>
+    
+    <!-- Reports Link -->
+    <a href="reports.php?type=monthly" class="btn-reports">📆 Báo cáo theo tháng</a>
+    
     <div class="user-info">
         <span class="user-name">👤 <?php echo htmlspecialchars($userInfo['full_name'] ?? 'User'); ?></span>
         <a href="logout.php" class="btn-logout">Đăng xuất</a>

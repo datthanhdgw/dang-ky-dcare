@@ -153,7 +153,8 @@ const GridModule = {
 
                             let taxPct = GridModule.hot.getDataAtCell(r, 4);
                             if (!taxPct && taxPct !== 0) {
-                                taxPct = partInfo.max_price_diff_percent !== undefined ? partInfo.max_price_diff_percent : 10;
+                                // Use vat_pct from master data
+                                taxPct = partInfo.vat_pct !== undefined ? partInfo.vat_pct : 10;
                             }
 
                             // Tính toán các giá trị

@@ -131,6 +131,12 @@ const App = {
         // Reset grid data
         GridModule.clear();
 
+        // Clear Select2 customer search
+        const customerSearch = document.getElementById('customer_search');
+        if (customerSearch && $(customerSearch).data('select2')) {
+            $(customerSearch).val(null).trigger('change');
+        }
+
         // Enable PSC input and focus
         const soPhieu = document.getElementById('so_phieu');
         soPhieu.disabled = false;
@@ -158,11 +164,17 @@ const App = {
      * Create new document
      */
     newDoc() {
-        // Clear all inputs
-        document.querySelectorAll('input').forEach(i => i.value = '');
+        // Clear all form fields using FormModule
+        FormModule.clear();
 
         // Clear grid
         GridModule.clear();
+
+        // Clear Select2 customer search
+        const customerSearch = document.getElementById('customer_search');
+        if (customerSearch && $(customerSearch).data('select2')) {
+            $(customerSearch).val(null).trigger('change');
+        }
 
         // Enable PSC input and focus
         const soPhieu = document.getElementById('so_phieu');
@@ -174,6 +186,17 @@ const App = {
 
         // Lock form
         FormModule.lock();
+
+        // Reset KH type to default and enable all
+        FormModule.enableAllCustomerTypes();
+        if (FormModule.customerTypesData.length > 0) {
+            const firstType = FormModule.customerTypesData[0];
+            const radio = document.querySelector(`input[name="loai_kh"][value="${firstType.id}"]`);
+            if (radio) {
+                radio.checked = true;
+                FormModule.changeKHType(firstType.id, firstType.type_name);
+            }
+        }
     },
 
     /**

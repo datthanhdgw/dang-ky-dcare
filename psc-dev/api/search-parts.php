@@ -5,6 +5,9 @@
  */
 header('Content-Type: application/json; charset=utf-8');
 
+// Include business configuration
+require_once __DIR__ . '/../config/business-config.php';
+
 try {
     require_once __DIR__ . '/../db.php';
     
@@ -23,18 +26,20 @@ try {
     $searchTerm = '%' . $term . '%';
     
     // Search by part_code or part_name
+    $validityDays = PRICE_VALIDITY_DAYS;
     $stmt = $pdo->prepare("
         SELECT 
             part_code,
             part_name,
             retail_price,
             max_price_diff_percent,
+            vat_pct,
             price_last_confirmed_at,
             is_active,
             DATEDIFF(NOW(), price_last_confirmed_at) as days_since_confirm,
             CASE 
                 WHEN price_last_confirmed_at IS NULL THEN 0
-                WHEN DATEDIFF(NOW(), price_last_confirmed_at) > 30 THEN 0
+                WHEN DATEDIFF(NOW(), price_last_confirmed_at) > ? THEN 0
                 ELSE 1
             END as price_is_valid
         FROM master_parts
@@ -43,7 +48,7 @@ try {
         ORDER BY is_active DESC, part_name
         LIMIT ?
     ");
-    $stmt->execute([$searchTerm, $searchTerm, $limit]);
+    $stmt->execute([$validityDays, $searchTerm, $searchTerm, $limit]);
     $parts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Format results for Handsontable autocomplete
@@ -66,6 +71,7 @@ try {
             'part_name' => $part['part_name'],
             'retail_price' => (float)$part['retail_price'],
             'max_price_diff_percent' => isset($part['max_price_diff_percent']) ? (int)$part['max_price_diff_percent'] : 10,
+            'vat_pct' => isset($part['vat_pct']) ? (int)$part['vat_pct'] : 10,
             'is_active' => $isActive,
             'price_is_valid' => isset($part['price_is_valid']) ? (int)$part['price_is_valid'] : 1,
             'days_since_confirm' => isset($part['days_since_confirm']) ? (int)$part['days_since_confirm'] : null,
