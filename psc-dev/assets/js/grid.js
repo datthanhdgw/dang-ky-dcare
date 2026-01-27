@@ -111,7 +111,7 @@ const GridModule = {
             },
 
             afterChange: function (changes, src) {
-                if (!changes || src === 'calc' || src === 'summary') return;
+                if (!changes || src === 'calc' || src === 'summary' || src === 'autofill') return;
 
                 changes.forEach(([r, c, oldVal, newVal]) => {
                     const last = GridModule.hot.countRows() - 1;
