@@ -387,22 +387,26 @@ const FormModule = {
      * @param {Object} data 
      */
     setData(data) {
+        // Set center first
+        if (data.center_id) {
+            this.elements.centerSelect.value = data.center_id;
+        }
+
+        // Set customer type BEFORE setting form values
+        // (because setCustomerType calls changeKHType which resets form fields)
+        if (data.customer_type_id) {
+            this.setCustomerType(data.customer_type_id, data.customer_type_name, true);
+        } else {
+            this.enableAllCustomerTypes();
+        }
+
+        // NOW set form values after customer type is set
         this.elements.custCode.value = data.cust_code || '';
         this.elements.khachHangInput.value = data.customer_name || '';
         this.elements.diaChiInput.value = data.address || '';
         this.elements.mstInput.value = data.mst || '';
         this.elements.email.value = data.email || '';
         this.elements.ghiChu.value = data.customer_note || '';
-
-        if (data.center_id) {
-            this.elements.centerSelect.value = data.center_id;
-        }
-
-        if (data.customer_type_id) {
-            this.setCustomerType(data.customer_type_id, data.customer_type_name, true);
-        } else {
-            this.enableAllCustomerTypes();
-        }
     }
 };
 
