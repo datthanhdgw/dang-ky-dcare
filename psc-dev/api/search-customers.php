@@ -9,6 +9,7 @@ try {
     require_once __DIR__ . '/../db.php';
     $term = isset($_GET['term']) ? trim($_GET['term']) : '';
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $typeId = isset($_GET['type_id']) ? (int)$_GET['type_id'] : null;
     $limit = 20;
     $offset = ($page - 1) * $limit;
     
@@ -22,21 +23,41 @@ try {
     
     $searchTerm = '%' . $term . '%';
 
-    $stmt = $pdo->prepare("
-        SELECT 
-            c.id,
-            c.customer_id,
-            c.customer_name,
-            c.address,
-            c.mst,
-            c.email
-        FROM customer c
-        WHERE c.customer_id LIKE ? 
-           OR c.customer_name LIKE ?
-        ORDER BY c.customer_name
-        LIMIT ? OFFSET ?
-    ");
-    $stmt->execute([$searchTerm, $searchTerm, $limit + 1, $offset]);
+    // Build query based on whether type_id is provided
+    if ($typeId) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.id,
+                c.customer_id,
+                c.customer_name,
+                c.address,
+                c.mst,
+                c.email
+            FROM customer c
+            INNER JOIN customer_type_mapping ctm ON c.id = ctm.customer_id
+            WHERE ctm.type_id = ?
+              AND (c.customer_id LIKE ? OR c.customer_name LIKE ?)
+            ORDER BY c.customer_name
+            LIMIT ? OFFSET ?
+        ");
+        $stmt->execute([$typeId, $searchTerm, $searchTerm, $limit + 1, $offset]);
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.id,
+                c.customer_id,
+                c.customer_name,
+                c.address,
+                c.mst,
+                c.email
+            FROM customer c
+            WHERE c.customer_id LIKE ? 
+               OR c.customer_name LIKE ?
+            ORDER BY c.customer_name
+            LIMIT ? OFFSET ?
+        ");
+        $stmt->execute([$searchTerm, $searchTerm, $limit + 1, $offset]);
+    }
     $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $hasMore = count($customers) > $limit;
     if ($hasMore) {

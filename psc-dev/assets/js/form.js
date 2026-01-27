@@ -224,7 +224,8 @@ const FormModule = {
                 data: function (params) {
                     return {
                         term: params.term,
-                        page: params.page || 1
+                        page: params.page || 1,
+                        type_id: self.selectedCustomerTypeId // Filter by selected customer type
                     };
                 },
                 processResults: function (data, params) {
@@ -372,6 +373,7 @@ const FormModule = {
             psc_no: this.elements.soPhieu.value,
             center_id: this.elements.centerSelect.value,
             customer_type_id: this.selectedCustomerTypeId,
+            cust_code: this.elements.custCode.value, // Customer code from search
             customer_name: this.elements.khachHangInput.value,
             address: this.elements.diaChiInput.value,
             mst: this.elements.mstInput.value,

@@ -178,8 +178,24 @@ function savePSCData($pdo, $masterData, $detailsData) {
         $masterId = $existing ? $existing['id'] : null;
         $customerId = $existing ? $existing['customer_id'] : null;
         
-        // Upsert customer
-        $customerId = upsertCustomer($pdo, $customerId, $masterData);
+        // Check if customer was selected from search (has cust_code)
+        if (!empty($masterData['cust_code'])) {
+            // Find existing customer by customer_id (cust_code)
+            $stmt = $pdo->prepare("SELECT id FROM customer WHERE customer_id = ?");
+            $stmt->execute([$masterData['cust_code']]);
+            $existingCustomer = $stmt->fetch();
+            
+            if ($existingCustomer) {
+                // Use existing customer, don't create new
+                $customerId = $existingCustomer['id'];
+            } else {
+                // Customer not found, create new
+                $customerId = upsertCustomer($pdo, null, $masterData);
+            }
+        } else {
+            // No customer selected from search - upsert customer
+            $customerId = upsertCustomer($pdo, $customerId, $masterData);
+        }
         
         // Upsert PSC master
         if ($masterId) {
