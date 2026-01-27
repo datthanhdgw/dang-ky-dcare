@@ -118,7 +118,7 @@ const GridModule = {
                     if (r >= last) return;
 
                     // If part column changed (column 0), auto-fill other columns
-                    if (c === 0 && newVal && newVal !== oldVal && src !== 'autofill') {
+                    if (c === 0 && newVal && newVal !== oldVal) {
                         const partInfo = GridModule.partsCache[newVal];
                         // console.log(partInfo, "partInfo for", newVal);
                         if (partInfo) {
@@ -129,27 +129,41 @@ const GridModule = {
                                 return;
                             }
 
-                            // Set quantity to 1 if empty
-                            const currentQty = GridModule.hot.getDataAtCell(r, 1);
-                            if (!currentQty || currentQty === 0) {
-                                GridModule.hot.setDataAtCell(r, 1, 1, 'autofill');
+                            // Lấy hoặc đặt số lượng
+                            let qty = GridModule.hot.getDataAtCell(r, 1);
+                            if (!qty || qty === 0) {
+                                qty = 1;
+                                GridModule.hot.setDataAtCell(r, 1, qty, 'autofill');
                             }
-                            // Set retail price
-                            GridModule.hot.setDataAtCell(r, 2, partInfo.retail_price, 'autofill');
-                            // Set tax from max_price_diff_percent (default 10% if not set)
-                            const currentTax = GridModule.hot.getDataAtCell(r, 4);
-                            if (!currentTax && currentTax !== 0) {
-                                const taxValue = partInfo.max_price_diff_percent !== undefined ? partInfo.max_price_diff_percent : 10;
-                                GridModule.hot.setDataAtCell(r, 4, taxValue, 'autofill');
-                            }
-                        }
-                    }
 
-                    // Calculate totals for this row
-                    GridModule.calculateRow(r);
+                            // Đặt đơn giá bán lẻ
+                            const price = partInfo.retail_price || 0;
+                            GridModule.hot.setDataAtCell(r, 2, price, 'autofill');
+
+                            // Lấy hoặc đặt thuế suất
+                            let taxPct = GridModule.hot.getDataAtCell(r, 4);
+                            if (!taxPct && taxPct !== 0) {
+                                taxPct = partInfo.max_price_diff_percent !== undefined ? partInfo.max_price_diff_percent : 10;
+                                GridModule.hot.setDataAtCell(r, 4, taxPct, 'autofill');
+                            }
+
+                            // Tính toán trực tiếp các giá trị
+                            const dt = qty * price;
+                            const th = Math.round(dt * taxPct / 100 / 5) * 5;
+                            const tt = dt + th;
+
+                            GridModule.hot.setDataAtCell(r, 3, dt, 'calc');
+                            GridModule.hot.setDataAtCell(r, 5, th, 'calc');
+                            GridModule.hot.setDataAtCell(r, 6, tt, 'calc');
+                        }
+                    } else {
+                        // Tính toán khi thay đổi các cột khác (số lượng, đơn giá, thuế)
+                        GridModule.calculateRow(r);
+                    }
                 });
 
-                GridModule.updateSummary();
+                // Delay updateSummary để đảm bảo tất cả giá trị đã được commit
+                setTimeout(() => GridModule.updateSummary(), 0);
             },
 
             afterSelection: function (r) {
@@ -204,16 +218,29 @@ const GridModule = {
      * Update summary row with totals
      */
     updateSummary() {
-        const d = this.hot.getData();
+        const sourceData = this.hot.getSourceData();
+        const rowCount = this.hot.countRows();
+        const last = rowCount - 1;
         let tDT = 0, tTax = 0, tTT = 0;
 
-        for (let i = 0; i < d.length - 1; i++) {
-            tDT += +d[i][3] || 0;
-            tTax += +d[i][5] || 0;
-            tTT += +d[i][6] || 0;
+        // Dùng getSourceData để lấy giá trị từ source data
+        for (let i = 0; i < sourceData.length; i++) {
+            const row = sourceData[i];
+            if (!row || !row[0]) continue; // Bỏ qua dòng trống hoặc dòng TỔNG CỘNG
+
+            const dt = +row[3] || 0;
+            const tax = +row[5] || 0;
+            const tt = +row[6] || 0;
+
+            console.log(`Row ${i}: DT=${dt}, Tax=${tax}, TT=${tt}`);
+
+            tDT += dt;
+            tTax += tax;
+            tTT += tt;
         }
 
-        const last = d.length - 1;
+        console.log(`TỔNG: DT=${tDT}, Tax=${tTax}, TT=${tTT}`);
+
         this.hot.setDataAtCell(last, 0, 'TỔNG CỘNG', 'summary');
         this.hot.setDataAtCell(last, 3, tDT, 'summary');
         this.hot.setDataAtCell(last, 5, tTax, 'summary');
