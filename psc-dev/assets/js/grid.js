@@ -134,7 +134,7 @@ const GridModule = {
                                 GridModule.hot.setDataAtCell(r, 0, oldVal || '', 'autofill');
                                 return;
                             }
-
+        
                             // Check if price is expired (>30 days) - prevent selection
                             if (partInfo.price_is_valid === 0) {
                                 const days = partInfo.days_since_confirm || 'N/A';

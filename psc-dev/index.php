@@ -47,7 +47,7 @@ include __DIR__ . '/views/header.php';
             </div>
             <div class="field" style="flex: 1.5;">
                 <label>Tên khách hàng</label>
-                <input id="khach_hang" placeholder="Nhập hoặc tự động điền khi chọn KH" />
+                <input id="khach_hang" placeholder="Nhập hoặc tự động điền khi chọn KH"/>
             </div>
             <div class="field" style="flex: 2;">
                 <label>Địa chỉ</label>
