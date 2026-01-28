@@ -129,7 +129,7 @@ include __DIR__ . '/views/header.php';
     <div class="receipt-summary" style="margin: 16px 0; display: flex; gap: 20px; align-items: center; justify-content: flex-end; padding: 12px; background: #f8f9fa; border-radius: 4px;">
         <div style="display: flex; align-items: center; gap: 8px;">
             <label style="font-weight: 600; margin: 0;">Tiền trên Phiếu thu:</label>
-            <input id="receipt_amount" type="text" readonly style="width: 150px; text-align: right; font-weight: bold; background: white; border: 2px solid #3498db; color: #2c3e50;" value="0" />
+            <input id="receipt_amount" type="text" style="width: 150px; text-align: right; font-weight: bold; background: white; border: 2px solid #3498db; color: #2c3e50;" value="0" placeholder="Nhập số tiền..." />
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
             <label style="font-weight: 600; margin: 0;">Chênh lệch:</label>

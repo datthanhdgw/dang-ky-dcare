@@ -324,13 +324,7 @@ const FormModule = {
             self.elements.mstInput.value = data.mst || '';
             self.elements.email.value = data.email || '';
 
-            // Set fields as readonly when customer is selected (if it's "KH công nợ")
-            if (self.currentKHType.toLowerCase().includes('công nợ')) {
-                self.elements.khachHangInput.style.background = '#f5f5f5';
-                self.elements.khachHangInput.readOnly = true;
-                self.elements.diaChiInput.style.background = '#f5f5f5';
-                self.elements.diaChiInput.readOnly = true;
-            }
+            // Allow editing customer name and address after selection
         });
 
         // Handle clear
