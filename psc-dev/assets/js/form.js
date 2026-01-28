@@ -518,6 +518,36 @@ const FormModule = {
         } else {
             this.enableAllCustomerTypes();
         }
+    },
+
+    /**
+     * Validate form data
+     * @returns {Object} { valid: boolean, errors: string[] }
+     */
+    validate() {
+        const errors = [];
+
+        // Validate customer type is selected
+        if (!this.selectedCustomerTypeId) {
+            errors.push('Vui lòng chọn loại khách hàng');
+        }
+
+        // Validate customer name (required)
+        const customerName = this.elements.khachHangInput.value.trim();
+        if (!customerName) {
+            errors.push('Tên khách hàng là bắt buộc');
+        }
+
+        // Validate address (required)
+        const address = this.elements.diaChiInput.value.trim();
+        if (!address) {
+            errors.push('Địa chỉ là bắt buộc');
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors: errors
+        };
     }
 };
 

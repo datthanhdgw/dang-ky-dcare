@@ -96,8 +96,8 @@ include __DIR__ . '/views/header.php';
                 <select id="product_group">
                     <option value="">-- Chọn nhóm --</option>
                     <option value="HHP">HHP</option>
-                    <option value="DA~CE">DA~CE</option>
-                    <option value="AV~CE">AV~CE</option>
+                    <option value="DA">DA</option>
+                    <option value="AV">AV</option>
                 </select>
             </div>
         </div>

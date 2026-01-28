@@ -203,6 +203,13 @@ const App = {
      * Save PSC data
      */
     async savePSC() {
+        // Validate form data first (customer info)
+        const formValidation = FormModule.validate();
+        if (!formValidation.valid) {
+            alert('Thông tin khách hàng không hợp lệ:\n\n' + formValidation.errors.join('\n'));
+            return;
+        }
+
         // Validate grid data before saving
         const validation = GridModule.validate();
         if (!validation.valid) {

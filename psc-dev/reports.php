@@ -10,11 +10,7 @@ include __DIR__ . '/views/header.php';
 
 // Report titles
 $reportTitles = [
-    'daily' => '📅 Báo cáo theo ngày',
     'monthly' => '📆 Báo cáo theo tháng',
-    'customer' => '👥 Báo cáo theo khách hàng',
-    'revenue' => '💰 Báo cáo doanh thu',
-    'all' => '📋 Tất cả báo cáo'
 ];
 
 $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
@@ -32,12 +28,6 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
                         break;
                     case 'monthly':
                         echo 'Xem tổng hợp báo cáo theo tháng';
-                        break;
-                    case 'customer':
-                        echo 'Phân tích giao dịch theo từng khách hàng';
-                        break;
-                    case 'revenue':
-                        echo 'Thống kê doanh thu và lợi nhuận';
                         break;
                     default:
                         echo 'Chọn loại báo cáo để xem chi tiết';
@@ -81,12 +71,6 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
             <?php if ($reportType === 'all'): ?>
                 <!-- Dashboard view with multiple reports -->
                 <div class="dashboard-grid">
-                    <div class="dashboard-card">
-                        <div class="card-icon">📅</div>
-                        <h3>Báo cáo ngày</h3>
-                        <p>Xem chi tiết giao dịch hàng ngày</p>
-                        <a href="reports.php?type=daily" class="card-link">Xem báo cáo →</a>
-                    </div>
                     
                     <div class="dashboard-card">
                         <div class="card-icon">📆</div>

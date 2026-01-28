@@ -96,13 +96,11 @@ function upsertCustomer($pdo, $customerId, $data) {
         $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ?");
         $stmt->execute([$emailValue]);
         if ($stmt->fetch()) {
-            // Email exists, generate unique placeholder for new customer
-            $emailValue = 'no-email-' . uniqid() . '@placeholder.local';
+            // Email exists for another customer, skip email update
+            $skipEmailUpdate = true;
         }
-    } elseif (empty($emailValue) && !$customerId) {
-        // New customer without email - generate unique placeholder
-        $emailValue = 'no-email-' . uniqid() . '@placeholder.local';
     }
+    // If email is empty, just keep it empty - no placeholder generation
     
     if ($customerId) {
         // Update existing customer - skip email if it would cause duplicate
@@ -190,15 +188,58 @@ function savePSCData($pdo, $masterData, $detailsData) {
             $existingCustomer = $stmt->fetch();
             
             if ($existingCustomer) {
-                // Use existing customer, don't create new
+                // Use existing customer, update info
                 $customerId = $existingCustomer['id'];
+                upsertCustomer($pdo, $customerId, $masterData);
             } else {
-                // Customer not found, create new
-                $customerId = upsertCustomer($pdo, null, $masterData);
+                // Customer not found - throw error
+                throw new Exception('Mã khách hàng không tồn tại trong hệ thống: ' . $masterData['cust_code']);
             }
         } else {
-            // No customer selected from search - upsert customer
-            $customerId = upsertCustomer($pdo, $customerId, $masterData);
+            // No customer selected from search - find existing by MST, email, or name+address
+            $foundCustomerId = null;
+            
+            // 1. Try to find by MST (tax code) - most unique identifier
+            if (!empty($masterData['mst'])) {
+                $stmt = $pdo->prepare("SELECT id FROM customer WHERE mst = ? AND mst != ''");
+                $stmt->execute([$masterData['mst']]);
+                $found = $stmt->fetch();
+                if ($found) {
+                    $foundCustomerId = $found['id'];
+                }
+            }
+            
+            // 2. Try to find by email if MST not found
+            if (!$foundCustomerId && !empty($masterData['email']) && !str_contains($masterData['email'], '@placeholder.local')) {
+                $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ?");
+                $stmt->execute([$masterData['email']]);
+                $found = $stmt->fetch();
+                if ($found) {
+                    $foundCustomerId = $found['id'];
+                }
+            }
+            
+            // 3. Try to find by exact name + address if neither MST nor email found
+            if (!$foundCustomerId && !empty($masterData['customer_name']) && !empty($masterData['address'])) {
+                $stmt = $pdo->prepare("SELECT id FROM customer WHERE customer_name = ? AND address = ?");
+                $stmt->execute([$masterData['customer_name'], $masterData['address']]);
+                $found = $stmt->fetch();
+                if ($found) {
+                    $foundCustomerId = $found['id'];
+                }
+            }
+            
+            if ($foundCustomerId) {
+                // Found existing customer - use and update
+                $customerId = $foundCustomerId;
+                upsertCustomer($pdo, $customerId, $masterData);
+            } elseif ($customerId) {
+                // Existing PSC master has customer - update that customer
+                upsertCustomer($pdo, $customerId, $masterData);
+            } else {
+                // No customer found and no existing - throw error (require selecting from dropdown)
+                throw new Exception('Không tìm thấy khách hàng trong hệ thống. Vui lòng chọn khách hàng từ danh sách tìm kiếm.');
+            }
         }
         
         // Upsert PSC master
