@@ -153,10 +153,7 @@ const FormModule = {
             this.elements.btnLookupTax.style.display = 'inline-block';
             this.elements.lookupStatus.style.display = 'block';
             this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            this.elements.khachHangInput.style.background = '#f5f5f5';
-            this.elements.khachHangInput.readOnly = true;
-            this.elements.diaChiInput.style.background = '#f5f5f5';
-            this.elements.diaChiInput.readOnly = true;
+            // Allow editing customer name and address
         } else {
             this.elements.btnLookupTax.style.display = 'none';
             this.elements.lookupStatus.style.display = 'none';
@@ -219,10 +216,7 @@ const FormModule = {
             this.elements.btnLookupTax.style.display = 'inline-block';
             this.elements.lookupStatus.style.display = 'block';
             this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            this.elements.khachHangInput.style.background = '#f5f5f5';
-            this.elements.khachHangInput.readOnly = true;
-            this.elements.diaChiInput.style.background = '#f5f5f5';
-            this.elements.diaChiInput.readOnly = true;
+            // Allow editing customer name and address
         } else {
             this.elements.btnLookupTax.style.display = 'none';
             this.elements.lookupStatus.style.display = 'none';

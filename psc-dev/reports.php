@@ -130,17 +130,17 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.reports-header {
+/* .reports-header {
     margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 2px solid #ff9f43;
-}
+} */
 
-.reports-header h2 {
-    margin: 0 0 8px 0;
+/* .reports-header h2 { */
+    /* margin: 0 0 8px 0;
     color: #ff9f43;
     font-size: 28px;
-}
+} */
 
 .reports-description {
     margin: 0;
@@ -187,7 +187,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     margin-top: 20px;
 }
 
-.dashboard-card {
+/* .dashboard-card {
     background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
     border: 2px solid #ff9f43;
     border-radius: 12px;
@@ -195,7 +195,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     text-align: center;
     transition: all 0.3s ease;
     cursor: pointer;
-}
+} */
 
 .dashboard-card:hover {
     transform: translateY(-5px);
@@ -221,7 +221,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
 
 .card-link {
     display: inline-block;
-    color: #ff9f43;
+    /* color: #ff9f43; */
     font-weight: 600;
     text-decoration: none;
     font-size: 14px;
@@ -229,7 +229,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
 }
 
 .card-link:hover {
-    color: #ff8a1a;
+    /* color: #ff8a1a; */
 }
 
 /* Report Summary */
@@ -240,7 +240,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     background: #fff3e0;
     border-radius: 8px;
     margin-bottom: 20px;
-    border: 2px solid #ff9f43;
+    /* border: 2px solid #ff9f43; */
 }
 
 .summary-item {
@@ -258,7 +258,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
 .summary-value {
     font-size: 24px;
     font-weight: 700;
-    color: #ff9f43;
+    /* color: #ff9f43; */
 }
 
 .no-data {
