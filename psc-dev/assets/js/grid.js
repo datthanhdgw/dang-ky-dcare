@@ -396,6 +396,26 @@ const GridModule = {
     },
 
     /**
+     * Get receipt amount value (parsed as number)
+     * @returns {number}
+     */
+    getReceiptAmount() {
+        if (!this.receiptAmountEl) return 0;
+        const value = this.receiptAmountEl.value.replace(/[,.]/g, '');
+        return parseInt(value) || 0;
+    },
+
+    /**
+     * Set receipt amount value
+     * @param {number} amount
+     */
+    setReceiptAmount(amount) {
+        if (!this.receiptAmountEl) return;
+        this.receiptAmountEl.value = new Intl.NumberFormat('vi-VN').format(amount || 0);
+        this.calculateDifference();
+    },
+
+    /**
      * Load data into grid
      * @param {Array} data 
      */

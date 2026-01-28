@@ -267,6 +267,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
                     UPDATE psc_masters SET
                         center_id = ?, customer_id = ?, 
                         serial_no = ?, model = ?, product_group = ?, service_name = ?, status = ?,
+                        receipt_amount = ?,
                         completed_at = NOW(),
                         updated_at = NOW()
                     WHERE id = ?
@@ -278,6 +279,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
                     $masterData['product_group'] ?? '',
                     $masterData['service_name'] ?? '',
                     $masterData['status'] ?? 'NEW',
+                    $masterData['receipt_amount'] ?? 0,
                     $masterId
                 ]);
             } else {
@@ -285,6 +287,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
                     UPDATE psc_masters SET
                         center_id = ?, customer_id = ?, 
                         serial_no = ?, model = ?, product_group = ?, service_name = ?, status = ?,
+                        receipt_amount = ?,
                         updated_at = NOW()
                     WHERE id = ?
                 ")->execute([
@@ -295,6 +298,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
                     $masterData['product_group'] ?? '',
                     $masterData['service_name'] ?? '',
                     $masterData['status'] ?? 'NEW',
+                    $masterData['receipt_amount'] ?? 0,
                     $masterId
                 ]);
             }
@@ -307,8 +311,8 @@ function savePSCData($pdo, $masterData, $detailsData) {
             
             if ($shouldSetCompletedAt) {
                 $pdo->prepare("
-                    INSERT INTO psc_masters (psc_no, center_id, customer_id, serial_no, model, product_group, service_name, status, completed_at, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    INSERT INTO psc_masters (psc_no, center_id, customer_id, serial_no, model, product_group, service_name, status, receipt_amount, completed_at, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 ")->execute([
                     $masterData['psc_no'],
                     $masterData['center_id'],
@@ -317,12 +321,13 @@ function savePSCData($pdo, $masterData, $detailsData) {
                     $masterData['model'] ?? '',
                     $masterData['product_group'] ?? '',
                     $masterData['service_name'] ?? '',
-                    $masterData['status'] ?? 'NEW'
+                    $masterData['status'] ?? 'NEW',
+                    $masterData['receipt_amount'] ?? 0
                 ]);
             } else {
                 $pdo->prepare("
-                    INSERT INTO psc_masters (psc_no, center_id, customer_id, serial_no, model, product_group, service_name, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO psc_masters (psc_no, center_id, customer_id, serial_no, model, product_group, service_name, status, receipt_amount, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ")->execute([
                     $masterData['psc_no'],
                     $masterData['center_id'],
@@ -331,7 +336,8 @@ function savePSCData($pdo, $masterData, $detailsData) {
                     $masterData['model'] ?? '',
                     $masterData['product_group'] ?? '',
                     $masterData['service_name'] ?? '',
-                    $masterData['status'] ?? 'NEW'
+                    $masterData['status'] ?? 'NEW',
+                    $masterData['receipt_amount'] ?? 0
                 ]);
             }
             

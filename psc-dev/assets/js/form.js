@@ -434,7 +434,9 @@ const FormModule = {
             product_group: this.elements.productGroup.value,
             service_name: this.elements.serviceName.value,
             status: this.elements.status.value,
-            completed_at: this.elements.completedAt.value
+            completed_at: this.elements.completedAt.value,
+            // Receipt amount for difference calculation
+            receipt_amount: GridModule.getReceiptAmount()
         };
     },
 
@@ -476,6 +478,11 @@ const FormModule = {
             this.elements.completedAt.value = date.toLocaleString('vi-VN');
         } else {
             this.elements.completedAt.value = '';
+        }
+
+        // Set receipt amount if exists
+        if (data.receipt_amount !== undefined && window.GridModule) {
+            GridModule.setReceiptAmount(data.receipt_amount);
         }
 
         console.log('After setting, khachHangInput.value =', this.elements.khachHangInput.value);
