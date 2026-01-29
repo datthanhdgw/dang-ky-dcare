@@ -138,7 +138,6 @@ const GridModule = {
                     // If part column changed (column 0), auto-fill other columns
                     if (c === 0 && newVal && newVal !== oldVal) {
                         const partInfo = GridModule.partsCache[newVal];
-                        console.log(partInfo);
                         if (partInfo) {
                             // Check if part is inactive - prevent selection
                             if (partInfo.is_active === 0) {
@@ -186,22 +185,23 @@ const GridModule = {
                         }
                     } else {
                         // User changed other columns (quantity, price, tax, etc.)
-
                         // Special check for unit price change (column 2)
                         if (c === 2 && newVal !== oldVal) {
                             const partName = GridModule.hot.getDataAtCell(r, 0);
                             const partInfo = GridModule.partsCache[partName];
 
                             if (partInfo && partInfo.retail_price) {
-                                const retailPrice = partInfo.retail_price;
+                                const retailPrice = parseFloat(partInfo.retail_price);
                                 const userPrice = parseFloat(newVal) || 0;
+                                console.log("Checking price variance:", retailPrice, userPrice);
                                 const threshold = partInfo.max_price_diff_percent || 10;
 
-                                if (userPrice > 0) {
+                                if (retailPrice > 0 && userPrice > 0) {
                                     // tính toán chênh lệch giá
                                     const diff = Math.abs(retailPrice - userPrice);
+                                    console.log("Checking price variance:", retailPrice, userPrice, diff);
                                     const diffPercent = (diff / retailPrice) * 100;
-
+                                    console.log("Checking price variance:", retailPrice, userPrice, diff, diffPercent.toFixed(1), threshold);
                                     if (diffPercent > threshold) {
                                         // Highlight cell with warning
                                         GridModule.hot.setCellMeta(r, 2, 'className', 'price-variance-warning');
@@ -211,7 +211,7 @@ const GridModule = {
                                             alert(
                                                 `⚠️ CẢNH BÁO: Giá chênh lệch ${diffPercent.toFixed(1)}% (vượt ngưỡng ${threshold}%)\n\n` +
                                                 `Giá bảng: ${retailPrice.toLocaleString('vi-VN')} VNĐ\n` +
-                                                `Giá nhập: ${userPrice.toLocaleString('vi-VN')} VNĐ\n` +
+                                                `Giá hệ thống: ${userPrice.toLocaleString('vi-VN')} VNĐ\n` +
                                                 `Chênh lệch: ${diff.toLocaleString('vi-VN')} VNĐ\n\n` +
                                                 `Cần liên hệ chị Loan để duyệt giá trước khi hoàn thành phiếu.`
                                             );
@@ -273,41 +273,16 @@ const GridModule = {
         let tax = +this.hot.getDataAtCell(row, 4) || 0;
 
         let dt = sl * dg;
-        let th = Math.round(dt * tax / 100 / 5) * 5; // Làm tròn đến bội số 5
+        console.log("Calculating row:", row, sl, dg, tax, dt);
+        let th = Math.round(dt * tax / 100 / 5) * 5; 
+        console.log("Tax and total:", th, th);
         let tt = dt + th;
 
         this.hot.setDataAtCell(row, 3, dt, 'calc');
         this.hot.setDataAtCell(row, 5, th, 'calc');
         this.hot.setDataAtCell(row, 6, tt, 'calc');
     },
-
-    /**
-     * Calculate totals for a specific row - Direct source data modification
-     * @param {number} row - Row index
-     */
-    calculateRowDirect(row) {
-        const last = this.hot.countRows() - 1;
-        if (row >= last) return;
-
-        const sourceData = this.hot.getSourceData();
-        const rowData = sourceData[row];
-        if (!rowData) return;
-
-        let sl = +rowData[1] || 0;
-        let dg = +rowData[2] || 0;
-        let tax = +rowData[4] || 0;
-
-        let dt = sl * dg;
-        let th = Math.round(dt * tax / 100 / 5) * 5; // Làm tròn đến bội số 5
-        let tt = dt + th;
-
-        rowData[3] = dt;
-        rowData[5] = th;
-        rowData[6] = tt;
-
-        this.hot.render();
-    },
-
+    
     /**
      * Update summary row with totals
      */
