@@ -198,6 +198,7 @@ const GridModule = {
                                 const threshold = partInfo.max_price_diff_percent || 10;
 
                                 if (userPrice > 0) {
+                                    // tính toán chênh lệch giá
                                     const diff = Math.abs(retailPrice - userPrice);
                                     const diffPercent = (diff / retailPrice) * 100;
 

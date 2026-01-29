@@ -135,11 +135,14 @@ function upsertCustomer($pdo, $customerId, $data) {
         return $customerId;
     } else {
         // Create new customer
+        // Stop auto-generating customer_id for all customer types
+        $customerCode = '';
+        
         $pdo->prepare("
             INSERT INTO customer (customer_id, customer_name, address, mst, email, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?, NOW())
         ")->execute([
-            'CUS_' . uniqid(),
+            $customerCode,
             $data['customer_name'],
             $data['address'],
             $data['mst'] ?? '',
@@ -159,6 +162,45 @@ function upsertCustomer($pdo, $customerId, $data) {
         
         return $newCustomerId;
     }
+}
+
+/**
+ * Update master_parts price when a valid price edit is made
+ * @param PDO $pdo
+ * @param string $partCode Part code
+ * @param float $newPrice New retail price
+ * @return bool Success status
+ */
+function updateMasterPartPrice($pdo, $partCode, $newPrice) {
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE master_parts SET 
+                retail_price = ?,
+                price_last_confirmed_at = NOW()
+            WHERE part_code = ?
+        ");
+        $stmt->execute([$newPrice, $partCode]);
+        return $stmt->rowCount() > 0;
+    } catch (Exception $e) {
+        error_log("Error updating master_parts price: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Extract part code from label (format: "PART_CODE - Part Name")
+ * @param string $label
+ * @return string|null Part code or null if invalid
+ */
+function extractPartCodeFromLabel($label) {
+    if (empty($label)) return null;
+    
+    // Remove [INACTIVE] prefix if present
+    $label = preg_replace('/^\[INACTIVE\]\s*/', '', $label);
+    
+    // Extract part code (before the " - ")
+    $parts = explode(' - ', $label, 2);
+    return !empty($parts[0]) ? trim($parts[0]) : null;
 }
 
 /**
@@ -351,11 +393,52 @@ function savePSCData($pdo, $masterData, $detailsData) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
+        // Prepare statement to get master_parts data for price validation
+        $stmtGetMasterPart = $pdo->prepare("
+            SELECT retail_price, max_price_diff_percent 
+            FROM master_parts 
+            WHERE part_code = ?
+        ");
+        
         $insertedRows = 0;
+        $pricesUpdated = 0;
         foreach ($detailsData as $row) {
             // Skip empty rows
             if (!isset($row[0]) || trim((string)$row[0]) === '') {
                 continue;
+            }
+            
+            $partLabel = $row[0]; // e.g., "GH82-30556A - test"
+            $unitPrice = (float)($row[2] ?? 0);
+            
+            // Extract part_code from label
+            $partCode = extractPartCodeFromLabel($partLabel);
+            
+            // Check if price should be updated in master_parts
+            if ($partCode && $unitPrice > 0) {
+                $stmtGetMasterPart->execute([$partCode]);
+                $masterPart = $stmtGetMasterPart->fetch();
+                
+                if ($masterPart) {
+                    $originalPrice = (float)$masterPart['retail_price'];
+                    $threshold = (int)($masterPart['max_price_diff_percent'] ?? 10);
+                    
+                    // Calculate price difference percentage
+                    $isValidPrice = true;
+                    if ($originalPrice > 0) {
+                        $diff = abs($originalPrice - $unitPrice);
+                        $diffPercent = ($diff / $originalPrice) * 100;
+                        // Price is valid if within threshold
+                        $isValidPrice = ($diffPercent <= $threshold);
+                    }
+                    
+                    // If price is valid (or original price is 0), update master_parts
+                    if ($isValidPrice || $originalPrice == 0) {
+                        if (updateMasterPartPrice($pdo, $partCode, $unitPrice)) {
+                            $pricesUpdated++;
+                        }
+                    }
+                }
             }
             
             // Grid has 8 columns (index 0-7): part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, note
@@ -382,7 +465,8 @@ function savePSCData($pdo, $masterData, $detailsData) {
             'status' => 'ok',
             'master_id' => $masterId,
             'customer_id' => $customerId,
-            'parts_inserted' => $insertedRows
+            'parts_inserted' => $insertedRows,
+            'prices_updated' => $pricesUpdated
         ];
         
     } catch (Exception $e) {
