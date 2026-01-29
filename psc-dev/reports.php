@@ -27,7 +27,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
                         echo 'Xem báo cáo chi tiết các giao dịch theo ngày';
                         break;
                     case 'monthly':
-                        echo 'Xem tổng hợp báo cáo theo tháng';
+                        // echo 'Xem tổng hợp báo cáo theo tháng';
                         break;
                     default:
                         echo 'Chọn loại báo cáo để xem chi tiết';
@@ -130,17 +130,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* .reports-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #ff9f43;
-} */
 
-/* .reports-header h2 { */
-    /* margin: 0 0 8px 0;
-    color: #ff9f43;
-    font-size: 28px;
-} */
 
 .reports-description {
     margin: 0;
@@ -187,15 +177,7 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     margin-top: 20px;
 }
 
-/* .dashboard-card {
-    background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
-    border: 2px solid #ff9f43;
-    border-radius: 12px;
-    padding: 24px;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-} */
+
 
 .dashboard-card:hover {
     transform: translateY(-5px);
@@ -221,7 +203,6 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
 
 .card-link {
     display: inline-block;
-    /* color: #ff9f43; */
     font-weight: 600;
     text-decoration: none;
     font-size: 14px;
@@ -229,7 +210,6 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
 }
 
 .card-link:hover {
-    /* color: #ff8a1a; */
 }
 
 /* Report Summary */
@@ -240,7 +220,6 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
     background: #fff3e0;
     border-radius: 8px;
     margin-bottom: 20px;
-    /* border: 2px solid #ff9f43; */
 }
 
 .summary-item {
@@ -258,7 +237,6 @@ $pageTitle = $reportTitles[$reportType] ?? 'Báo cáo';
 .summary-value {
     font-size: 24px;
     font-weight: 700;
-    /* color: #ff9f43; */
 }
 
 .no-data {
@@ -306,9 +284,7 @@ function loadReportData() {
         alert('Vui lòng chọn khoảng thời gian');
         return;
     }
-    
-    // TODO: Implement API call to fetch report data
-    console.log('Loading report data:', { fromDate, toDate, branch });
+
     
     // Mock data for demonstration
     document.getElementById('totalOrders').textContent = '125';
@@ -329,20 +305,12 @@ function loadReportData() {
                     <th>Thành tiền</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 20px;">
-                        Dữ liệu mẫu - Kết nối API để hiển thị dữ liệu thực
-                    </td>
-                </tr>
-            </tbody>
         </table>
     `;
 }
 
 function exportToExcel() {
     alert('Chức năng xuất Excel đang được phát triển');
-    // TODO: Implement Excel export functionality
 }
 </script>
 

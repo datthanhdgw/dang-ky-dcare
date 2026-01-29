@@ -138,7 +138,7 @@ const GridModule = {
                     // If part column changed (column 0), auto-fill other columns
                     if (c === 0 && newVal && newVal !== oldVal) {
                         const partInfo = GridModule.partsCache[newVal];
-                        // console.log(partInfo, "partInfo for", newVal);
+                        console.log(partInfo);
                         if (partInfo) {
                             // Check if part is inactive - prevent selection
                             if (partInfo.is_active === 0) {
@@ -329,7 +329,7 @@ const GridModule = {
             tTT += tt;
         }
 
-        console.log('updateSummary:', { tDT, tTax, tTT });
+
 
         this.hot.setDataAtCell([
             [last, 0, 'TỔNG CỘNG'],
@@ -461,6 +461,17 @@ const GridModule = {
         this.hot.loadData([]);
         this.hot.alter('insert_row_below', this.hot.countRows() - 1);
         this.updateSummary();
+
+        // Reset receipt summary fields
+        if (this.receiptAmountEl) {
+            this.receiptAmountEl.value = '0';
+        }
+        if (this.diffAmountEl) {
+            this.diffAmountEl.value = '0';
+            this.diffAmountEl.style.color = '#95a5a6';
+            this.diffAmountEl.style.borderColor = '#95a5a6';
+        }
+        this.currentTotalAmount = 0;
     },
 
     /**

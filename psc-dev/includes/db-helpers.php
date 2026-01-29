@@ -80,8 +80,8 @@ function getPSCData($pdo, $pscNo) {
  * @return int Customer ID
  */
 function upsertCustomer($pdo, $customerId, $data) {
-    // Handle email - check if provided
-    $emailValue = !empty($data['email']) ? $data['email'] : '';
+    // Handle email - check if provided (use NULL instead of empty string to avoid UNIQUE constraint issues)
+    $emailValue = !empty($data['email']) ? $data['email'] : null;
     $skipEmailUpdate = false;
     
     // Check if email already exists for another customer
@@ -237,8 +237,8 @@ function savePSCData($pdo, $masterData, $detailsData) {
                 // Existing PSC master has customer - update that customer
                 upsertCustomer($pdo, $customerId, $masterData);
             } else {
-                // No customer found and no existing - throw error (require selecting from dropdown)
-                throw new Exception('Không tìm thấy khách hàng trong hệ thống. Vui lòng chọn khách hàng từ danh sách tìm kiếm.');
+                // No customer found - create new customer
+                $customerId = upsertCustomer($pdo, null, $masterData);
             }
         }
         

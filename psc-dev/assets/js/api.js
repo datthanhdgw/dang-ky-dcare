@@ -4,8 +4,7 @@ const API = {
      * @returns {Promise<Array>}
      */
     async fetchCenters() {
-    const response = await fetch('api/centers.php');
-        // console.log(response);
+        const response = await fetch('api/centers.php');
         const data = await response.json();
         if (data.status === 'error') throw new Error(data.message);
         return data.centers || [];

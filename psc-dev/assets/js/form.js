@@ -149,15 +149,19 @@ const FormModule = {
         this.elements.diaChiInput.readOnly = false;
         this.elements.khFormTitle.textContent = 'Thông tin ' + typeName.toLowerCase();
         // Check if it's "KH doanh nghiệp" for MST lookup feature
+        const customerSearchWrapper = this.elements.customerSearch ? this.elements.customerSearch.closest('.field') : null;
         if (typeName.toLowerCase().includes('doanh nghiệp')) {
             this.elements.btnLookupTax.style.display = 'inline-block';
             this.elements.lookupStatus.style.display = 'block';
             this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            // Allow editing customer name and address
+            // Hide customer search for business customers - they can enter directly
+            if (customerSearchWrapper) customerSearchWrapper.style.display = 'none';
         } else {
             this.elements.btnLookupTax.style.display = 'none';
             this.elements.lookupStatus.style.display = 'none';
             this.elements.mstInput.style.background = '#f5f5f5';
+            // Show customer search for individual customers
+            if (customerSearchWrapper) customerSearchWrapper.style.display = '';
         }
     },
 
@@ -212,15 +216,19 @@ const FormModule = {
         this.elements.diaChiInput.style.background = '';
         this.elements.diaChiInput.readOnly = false;
 
+        const customerSearchWrapper = this.elements.customerSearch ? this.elements.customerSearch.closest('.field') : null;
         if (typeName.toLowerCase().includes('doanh nghiệp')) {
             this.elements.btnLookupTax.style.display = 'inline-block';
             this.elements.lookupStatus.style.display = 'block';
             this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            // Allow editing customer name and address
+            // Hide customer search for business customers
+            if (customerSearchWrapper) customerSearchWrapper.style.display = 'none';
         } else {
             this.elements.btnLookupTax.style.display = 'none';
             this.elements.lookupStatus.style.display = 'none';
             this.elements.mstInput.style.background = '#f5f5f5';
+            // Show customer search for individual customers
+            if (customerSearchWrapper) customerSearchWrapper.style.display = '';
         }
     },
 
@@ -445,17 +453,10 @@ const FormModule = {
      * @param {Object} data 
      */
     setData(data) {
-        console.log('setData received:', data);
-
         // Set center first
         if (data.center_id) {
             this.elements.centerSelect.value = data.center_id;
         }
-
-        // Set form values FIRST
-        console.log('Setting form values:');
-        console.log('- khachHangInput element:', this.elements.khachHangInput);
-        console.log('- customer_name value:', data.customer_name);
 
         this.elements.custCode.value = data.cust_code || '';
         this.elements.khachHangInput.value = data.customer_name || '';
@@ -485,7 +486,7 @@ const FormModule = {
             GridModule.setReceiptAmount(data.receipt_amount);
         }
 
-        console.log('After setting, khachHangInput.value =', this.elements.khachHangInput.value);
+
 
         // Pre-populate Select2 with existing customer data
         if (data.cust_code && data.customer_name) {

@@ -105,7 +105,6 @@ const App = {
             }
 
             statusEl.innerText = 'Đang sửa phiếu';
-            console.log('Load result:', res);
 
             // Load form data
             FormModule.setData(res.master);
@@ -220,7 +219,7 @@ const App = {
         const masterData = FormModule.getData();
         const detailsData = GridModule.getData();
 
-        console.log('Saving:', { master: masterData, details: detailsData });
+
 
         try {
             const result = await API.savePSC(masterData, detailsData);
