@@ -154,8 +154,8 @@ const FormModule = {
             this.elements.btnLookupTax.style.display = 'inline-block';
             this.elements.lookupStatus.style.display = 'block';
             this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            // Hide customer search for business customers - they can enter directly
-            if (customerSearchWrapper) customerSearchWrapper.style.display = 'none';
+            // Show customer search for business customers as well
+            if (customerSearchWrapper) customerSearchWrapper.style.display = '';
         } else {
             this.elements.btnLookupTax.style.display = 'none';
             this.elements.lookupStatus.style.display = 'none';
@@ -221,8 +221,8 @@ const FormModule = {
             this.elements.btnLookupTax.style.display = 'inline-block';
             this.elements.lookupStatus.style.display = 'block';
             this.elements.mstInput.placeholder = 'Nhập MST để tìm kiếm';
-            // Hide customer search for business customers
-            if (customerSearchWrapper) customerSearchWrapper.style.display = 'none';
+            // Show customer search for business customers
+            if (customerSearchWrapper) customerSearchWrapper.style.display = '';
         } else {
             this.elements.btnLookupTax.style.display = 'none';
             this.elements.lookupStatus.style.display = 'none';
@@ -299,14 +299,23 @@ const FormModule = {
             },
             templateResult: function (data) {
                 if (data.loading) return data.text;
+                let customerId = data.customer_id || '';
+                if (customerId === 'NULL') customerId = '';
+
                 return $('<div class="customer-option">' +
-                    '<span class="customer-code">' + (data.customer_id || '') + '</span>' +
+                    '<span class="customer-code">' + customerId + '</span>' +
                     '<span class="customer-name">' + (data.customer_name || '') + '</span>' +
                     '</div>');
             },
             templateSelection: function (data) {
                 if (!data.customer_name) return data.text;
-                return data.customer_id + ' - ' + data.customer_name;
+                let customerId = data.customer_id || '';
+                if (customerId === 'NULL') customerId = '';
+
+                if (customerId) {
+                    return customerId + ' - ' + data.customer_name;
+                }
+                return data.customer_name;
             },
             language: {
                 inputTooShort: function () {
@@ -326,7 +335,9 @@ const FormModule = {
             const data = e.params.data;
 
             // Fill customer data into form fields
-            self.elements.custCode.value = data.customer_id || '';
+            let customerId = data.customer_id || '';
+            if (customerId === 'NULL') customerId = '';
+            self.elements.custCode.value = customerId;
             self.elements.khachHangInput.value = data.customer_name || '';
             self.elements.diaChiInput.value = data.address || '';
             self.elements.mstInput.value = data.mst || '';
@@ -490,9 +501,13 @@ const FormModule = {
         // Pre-populate Select2 with existing customer data
         if (data.cust_code && data.customer_name) {
             const $select = $(this.elements.customerSearch);
+            let displayCode = data.cust_code;
+            if (displayCode === 'NULL') displayCode = '';
+            const displayText = displayCode ? (displayCode + ' - ' + data.customer_name) : data.customer_name;
+
             // Create a new option with the customer data
             const option = new Option(
-                data.cust_code + ' - ' + data.customer_name,
+                displayText,
                 data.customer_id || data.cust_code,
                 true, // default selected
                 true  // currently selected

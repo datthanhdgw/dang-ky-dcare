@@ -406,7 +406,7 @@ function savePSCData($pdo, $masterData, $detailsData) {
                 continue;
             }
             
-            $partLabel = $row[0]; // e.g., "GH82-30556A - test"
+            $partLabel = $row[0]; // e.g., "GH82-30556A"
             $unitPrice = (float)($row[2] ?? 0);
             
             // Extract part_code from label

@@ -61,6 +61,12 @@ const GridModule = {
                                     // Store parts data in cache for later use
                                     if (result.partsMap) {
                                         Object.assign(self.partsCache, result.partsMap);
+                                        // Also index by part_code to ensure lookup works when cell contains just the code
+                                        Object.values(result.partsMap).forEach(part => {
+                                            if (part && part.part_code) {
+                                                self.partsCache[part.part_code] = part;
+                                            }
+                                        });
                                     }
                                     callback(result.data);
                                 } else {
@@ -134,7 +140,6 @@ const GridModule = {
                 changes.forEach(([r, c, oldVal, newVal]) => {
                     const last = GridModule.hot.countRows() - 1;
                     if (r >= last) return;
-
                     // If part column changed (column 0), auto-fill other columns
                     if (c === 0 && newVal && newVal !== oldVal) {
                         const partInfo = GridModule.partsCache[newVal];
@@ -188,45 +193,15 @@ const GridModule = {
                         // User changed other columns (quantity, price, tax, etc.)
                         // Special check for unit price change (column 2)
                         if (c === 2 && newVal !== oldVal) {
-                            const partName = GridModule.hot.getDataAtCell(r, 0);
-                            const partInfo = GridModule.partsCache[partName];
+                            const partCode = GridModule.hot.getDataAtCell(r, 0);
 
-                            if (partInfo && partInfo.retail_price) {
-                                const retailPrice = parseFloat(partInfo.retail_price);
-                                const userPrice = parseFloat(newVal) || 0;
-                                console.log("Checking price variance:", retailPrice, userPrice);
-                                const threshold = partInfo.max_price_diff_percent || 10;
+                            // Prevent check if part code is empty
+                            if (!partCode) return;
 
-                                if (retailPrice > 0 && userPrice > 0) {
-                                    // tính toán chênh lệch giá
-                                    const diff = Math.abs(retailPrice - userPrice);
-                                    console.log("Checking price variance:", retailPrice, userPrice, diff);
-                                    const diffPercent = (diff / retailPrice) * 100;
-                                    console.log("Checking price variance:", retailPrice, userPrice, diff, diffPercent.toFixed(1), threshold);
-                                    if (diffPercent > threshold) {
-                                        // Highlight cell with warning
-                                        GridModule.hot.setCellMeta(r, 2, 'className', 'price-variance-warning');
-
-                                        // Show warning alert
-                                        setTimeout(() => {
-                                            alert(
-                                                `⚠️ CẢNH BÁO: Giá chênh lệch ${diffPercent.toFixed(1)}% (vượt ngưỡng ${threshold}%)\n\n` +
-                                                `Giá bảng: ${retailPrice.toLocaleString('vi-VN')} VNĐ\n` +
-                                                `Giá hệ thống: ${userPrice.toLocaleString('vi-VN')} VNĐ\n` +
-                                                `Chênh lệch: ${diff.toLocaleString('vi-VN')} VNĐ\n\n` +
-                                                `Cần liên hệ chị Loan để duyệt giá trước khi hoàn thành phiếu.`
-                                            );
-                                        }, 100);
-                                    } else {
-                                        // Clear warning if within threshold
-                                        GridModule.hot.setCellMeta(r, 2, 'className', '');
-                                    }
-                                }
-                            }
+                            GridModule.processPriceVarianceCheck(r, newVal, partCode);
                         }
 
                         // Tính toán khi thay đổi các cột khác (số lượng, đơn giá, thuế)
-                        // console.log('Recalculating row due to change at', r, c);
                         GridModule.calculateRow(r);
                     }
                 });
@@ -332,10 +307,6 @@ const GridModule = {
         this.calculateDifference();
     },
 
-    /**
-     * Calculate and display the difference between receipt amount and total
-     * Formula: Chênh lệch = Tiền trên Phiếu thu (6) - Thành tiền (5)
-     */
     calculateDifference() {
         if (!this.receiptAmountEl || !this.diffAmountEl) return;
 
@@ -360,9 +331,6 @@ const GridModule = {
         }
     },
 
-    /**
-     * Format receipt amount with thousand separators on blur
-     */
     formatReceiptAmount() {
         if (!this.receiptAmountEl) return;
 
@@ -371,30 +339,18 @@ const GridModule = {
         this.receiptAmountEl.value = new Intl.NumberFormat('vi-VN').format(numValue);
     },
 
-    /**
-     * Get receipt amount value (parsed as number)
-     * @returns {number}
-     */
     getReceiptAmount() {
         if (!this.receiptAmountEl) return 0;
         const value = this.receiptAmountEl.value.replace(/[,.]/g, '');
         return parseInt(value) || 0;
     },
 
-    /**
-     * Set receipt amount value
-     * @param {number} amount
-     */
     setReceiptAmount(amount) {
         if (!this.receiptAmountEl) return;
         this.receiptAmountEl.value = new Intl.NumberFormat('vi-VN').format(amount || 0);
         this.calculateDifference();
     },
 
-    /**
-     * Load data into grid
-     * @param {Array} data 
-     */
     loadData(data) {
         this.hot.loadData(data);
         this.hot.alter('insert_row_below', this.hot.countRows() - 1);
@@ -438,7 +394,6 @@ const GridModule = {
         this.hot.alter('insert_row_below', this.hot.countRows() - 1);
         this.updateSummary();
 
-        // Reset receipt summary fields
         if (this.receiptAmountEl) {
             this.receiptAmountEl.value = '0';
         }
@@ -485,7 +440,7 @@ const GridModule = {
                 (tax !== null && tax !== '' && tax !== 0) ||
                 (note !== null && note !== '' && String(note).trim() !== '');
 
-            // Skip completely empty rows (no part name and no other data)
+            // Skip empty rows  (no part name and no other data)
             if ((!partName || partName.trim() === '') && !hasAnyData) continue;
 
             // If row has data but no part name - this is an error
@@ -497,13 +452,13 @@ const GridModule = {
 
             validRowCount++;
 
-            // Validate quantity - must be positive integer
+            // Validate quantity 
             if (qty === null || qty === '' || isNaN(qty) || !Number.isInteger(Number(qty)) || Number(qty) <= 0) {
                 errors.push(`Dòng ${row + 1}: Số lượng phải là số nguyên dương`);
                 this.hot.setCellMeta(row, 1, 'className', 'htInvalid');
             }
 
-            // Validate price - must be positive number
+            // Validate price 
             if (price === null || price === '' || isNaN(price) || Number(price) < 0) {
                 errors.push(`Dòng ${row + 1}: Đơn giá phải là số >= 0`);
                 this.hot.setCellMeta(row, 2, 'className', 'htInvalid');
@@ -515,7 +470,7 @@ const GridModule = {
                 this.hot.setCellMeta(row, 4, 'className', 'htInvalid');
             }
 
-            // Check for price variance warning
+            // Check for price 
             const cellMeta = this.hot.getCellMeta(row, 2);
             if (cellMeta && cellMeta.className && cellMeta.className.includes('price-variance-warning')) {
                 hasPriceWarning = true;
@@ -537,13 +492,9 @@ const GridModule = {
         };
     },
 
-    /**
-     * Clear validation error highlights (but preserve price warnings)
-     */
     clearValidationErrors() {
         const rowCount = this.hot.countRows() - 1; // Exclude summary row
         for (let row = 0; row < rowCount; row++) {
-            // Clear htInvalid but preserve price-variance-warning
             const cols = [0, 1, 2, 4];
             cols.forEach(col => {
                 const meta = this.hot.getCellMeta(row, col);
@@ -557,8 +508,72 @@ const GridModule = {
                 }
             });
         }
+    },
+    processPriceVarianceCheck(row, newPrice, partCode) {
+        let partInfo = this.partsCache[partCode];
+
+        if (!partInfo) {
+            partInfo = Object.values(this.partsCache).find(p => p.part_code === partCode);
+        }
+
+        if (partInfo) {
+            this.checkPriceVariance(row, newPrice, partInfo);
+        } else {
+            fetch('api/search-parts.php?term=' + encodeURIComponent(partCode))
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.partsMap) {
+                        Object.assign(this.partsCache, result.partsMap);
+                        Object.values(result.partsMap).forEach(part => {
+                            if (part && part.part_code) {
+                                this.partsCache[part.part_code] = part;
+                            }
+                        });
+
+                        const fetchedInfo = this.partsCache[partCode];
+                        if (fetchedInfo) {
+                            this.checkPriceVariance(row, newPrice, fetchedInfo);
+                        }
+                    }
+                })
+                .catch(err => console.error('Error validation price fetch:', err));
+        }
+    },
+
+    checkPriceVariance(row, userPrice, partInfo) {
+        if (!partInfo || !partInfo.retail_price) return;
+
+        const retailPrice = parseFloat(partInfo.retail_price);
+        const currentPrice = parseFloat(userPrice) || 0;
+        const threshold = partInfo.max_price_diff_percent || 10;
+
+        if (retailPrice <= 0 || currentPrice <= 0) return;
+
+        const diff = Math.abs(retailPrice - currentPrice);
+        const diffPercent = (diff / retailPrice) * 100;
+
+
+        if (diffPercent > threshold) {
+            this.hot.setCellMeta(row, 2, 'className', 'price-variance-warning');
+            this.hot.render();
+
+            setTimeout(() => {
+                alert(
+                    `⚠️ CẢNH BÁO: Giá chênh lệch ${diffPercent.toFixed(1)}% (vượt ngưỡng ${threshold}%)\n\n` +
+                    `Giá bảng: ${retailPrice.toLocaleString('vi-VN')} VNĐ\n` +
+                    `Giá hệ thống: ${currentPrice.toLocaleString('vi-VN')} VNĐ\n` +
+                    `Chênh lệch: ${diff.toLocaleString('vi-VN')} VNĐ\n\n` +
+                    `Cần liên hệ chị Loan để duyệt giá trước khi hoàn thành phiếu.`
+                );
+            }, 100);
+        } else {
+            const meta = this.hot.getCellMeta(row, 2);
+            if (meta && meta.className && meta.className.includes('price-variance-warning')) {
+                this.hot.setCellMeta(row, 2, 'className', '');
+                this.hot.render();
+            }
+        }
     }
 };
 
-// Export for use in other modules
 window.GridModule = GridModule;
