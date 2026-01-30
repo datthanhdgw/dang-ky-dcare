@@ -63,7 +63,7 @@ include __DIR__ . '/views/header.php';
             <div class="field" id="mst-wrapper" style="position: relative;">
                 <label>Mã số thuế</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <input id="mst" inputmode="numeric" maxlength="15" style="flex: 1;" placeholder="Nhập MST" />
+                    <input id="mst" type="text" maxlength="15" style="flex: 1;" placeholder="Nhập MST" />
                     <button type="button" class="btn-lookup" id="btn-lookup-tax" style="display: none;">🔍 Tra cứu</button>
                 </div>
                 <div class="lookup-status" id="lookup-status" style="display: none;"></div>

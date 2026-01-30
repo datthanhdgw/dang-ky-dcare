@@ -83,7 +83,6 @@ function upsertCustomer($pdo, $customerId, $data) {
     // Handle email - check if provided (use NULL instead of empty string to avoid UNIQUE constraint issues)
     $emailValue = !empty($data['email']) ? $data['email'] : null;
     $skipEmailUpdate = false;
-    
     // Check if email already exists for another customer
     if (!empty($emailValue) && $customerId) {
         $stmt = $pdo->prepare("SELECT id FROM customer WHERE email = ? AND id != ?");
@@ -103,9 +102,7 @@ function upsertCustomer($pdo, $customerId, $data) {
     // If email is empty, just keep it empty - no placeholder generation
     
     if ($customerId) {
-        // Update existing customer - skip email if it would cause duplicate
         if ($skipEmailUpdate || empty($emailValue)) {
-            // Don't update email field
             $pdo->prepare("
                 UPDATE customer SET 
                     customer_name = ?, address = ?, mst = ?, note = ?, updated_at = NOW()
@@ -211,8 +208,9 @@ function extractPartCodeFromLabel($label) {
  * @return array Result with IDs
  */
 function savePSCData($pdo, $masterData, $detailsData) {
-    $pdo->beginTransaction();
     
+    $pdo->beginTransaction();
+ 
     try {
         // Check existing PSC
         $stmt = $pdo->prepare("SELECT id, customer_id FROM psc_masters WHERE psc_no = ?");
@@ -220,8 +218,8 @@ function savePSCData($pdo, $masterData, $detailsData) {
         $existing = $stmt->fetch();
         
         $masterId = $existing ? $existing['id'] : null;
+
         $customerId = $existing ? $existing['customer_id'] : null;
-        
         // Check if customer was selected from search (has cust_code)
         if (!empty($masterData['cust_code'])) {
             // Find existing customer by customer_id (cust_code)
@@ -389,8 +387,8 @@ function savePSCData($pdo, $masterData, $detailsData) {
         // Insert parts
         $stmtPart = $pdo->prepare("
             INSERT INTO psc_part 
-            (psc_id, part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, receipt_amt, diff_amt, note, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            (psc_id, part_name, quantity, unit_price, revenue, vat_pct, vat_amt, total_amt, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
         // Prepare statement to get master_parts data for price validation
@@ -451,8 +449,6 @@ function savePSCData($pdo, $masterData, $detailsData) {
                 (int)($row[4] ?? 0),         // vat_pct
                 (float)($row[5] ?? 0),       // vat_amt
                 (float)($row[6] ?? 0),       // total_amt
-                0,                           // receipt_amt (not in grid)
-                0,                           // diff_amt (not in grid)
                 $row[7] ?? ''                // note (index 7 in grid)
             ]);
             

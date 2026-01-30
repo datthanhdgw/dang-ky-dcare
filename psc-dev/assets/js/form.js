@@ -258,9 +258,9 @@ const FormModule = {
             }
         });
 
-        // Only allow numbers in MST input
+        // Only allow no-space input for MST
         this.elements.mstInput.addEventListener('input', function (e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
+            this.value = this.value.replace(' ', '');
         });
     },
 
@@ -278,7 +278,7 @@ const FormModule = {
             ajax: {
                 url: 'api/search-customers.php',
                 dataType: 'json',
-                delay: 300,
+                delay: 400,
                 data: function (params) {
                     return {
                         term: params.term,
@@ -352,7 +352,6 @@ const FormModule = {
      */
     async lookupMST() {
         const mst = this.elements.mstInput.value.trim();
-
         if (!mst) {
             this.elements.lookupStatus.innerText = 'Vui lòng nhập MST';
             this.elements.lookupStatus.style.color = '#e74c3c';

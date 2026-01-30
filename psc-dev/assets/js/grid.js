@@ -175,6 +175,7 @@ const GridModule = {
 
                             // Batch tất cả changes cùng lúc
                             GridModule.hot.setDataAtCell([
+                                [r, 0, partInfo.part_code || ''],
                                 [r, 1, qty],
                                 [r, 2, price],
                                 [r, 3, dt],
@@ -225,6 +226,7 @@ const GridModule = {
                         }
 
                         // Tính toán khi thay đổi các cột khác (số lượng, đơn giá, thuế)
+                        // console.log('Recalculating row due to change at', r, c);
                         GridModule.calculateRow(r);
                     }
                 });
@@ -273,16 +275,14 @@ const GridModule = {
         let tax = +this.hot.getDataAtCell(row, 4) || 0;
 
         let dt = sl * dg;
-        console.log("Calculating row:", row, sl, dg, tax, dt);
-        let th = Math.round(dt * tax / 100 / 5) * 5; 
-        console.log("Tax and total:", th, th);
+        let th = Math.round(dt * tax / 100 / 5) * 5;
         let tt = dt + th;
 
         this.hot.setDataAtCell(row, 3, dt, 'calc');
         this.hot.setDataAtCell(row, 5, th, 'calc');
         this.hot.setDataAtCell(row, 6, tt, 'calc');
     },
-    
+
     /**
      * Update summary row with totals
      */
